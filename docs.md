@@ -12,8 +12,8 @@ eg. let mynum: Number = 12;
 Functions are similarly defined, with their value looking like the following:
 
 (parameter: Type) -> Returntype {\
-    function body\
-    Return ReturnValue;\
+    &nbsp;function body\
+    &nbsp;Return ReturnValue;\
 }
 
 An example function would be:
