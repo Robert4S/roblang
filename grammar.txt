@@ -14,7 +14,7 @@
 <Bool Literal> ::= True | False
 <String> ::= ‘ “ ’  ( ∈ { all alphanumeric characters } )* ‘ ” ’
 <Function> ::= ‘(’ <Parameter>* ‘)’ ‘->’ <Type> <Block>
-<Value> ::= <Literal> | <Identifier ∈ Assign> | <Block> | <Expression> | <Call> |
+<Value> ::= <Literal> | <Identifier ∈ Assign> | <Expression> | <Call> |
 <Expression> ::= <Number Expression> | <Bool Expression>
 <Number Expression> ::= <Number> <Operator> <Number>
 <Bool Expression> ::= ( <Value> ‘==’ <Value> ) | ( <Number> ‘<’ | ‘<=’ | ‘>’ | ‘>=’ <Number>)

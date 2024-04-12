@@ -21,7 +21,12 @@ pub enum TokenTypes {
     NUMTYPE,
     BOOLTYPE,
     TEXTTYPE,
+    FUNCTYPE,
+    NOTHINGTYPE,
     BOOL { val: bool },
+    EOF,
+    COMMA,
+    RETURN,
 }
 
 impl Token {
@@ -48,7 +53,12 @@ impl Token {
             TokenTypes::NUMTYPE => "TEXTTYPE",
             TokenTypes::BOOLTYPE => "BOOLTYPE",
             TokenTypes::TEXTTYPE => "TEXTTYPE",
-            TokenTypes::BOOL {val: _} => "BOOL",
+            TokenTypes::FUNCTYPE => "FUNCTYPE",
+            TokenTypes::BOOL { val: _ } => "BOOL",
+            TokenTypes::EOF => "EOF",
+            TokenTypes::NOTHINGTYPE => "NOTHINGTYPE",
+            TokenTypes::COMMA => "COMMA",
+            TokenTypes::RETURN => "RETURN",
         }
     }
 }

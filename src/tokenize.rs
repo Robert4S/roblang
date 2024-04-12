@@ -17,6 +17,16 @@ pub fn parse_tokenize(reader: FileReader) -> Vec<Token> {
 
     while let Some(current) = iter.next() {
         match current {
+            ',' => {
+                if let Some(keyword) = test_keyword(&wordbuf) {
+                    tokens.push(keyword);
+                } else {
+                    let ident = TokenTypes::IDENT { name: wordbuf };
+                    tokens.push(Token::new(ident));
+                }
+                wordbuf = String::new();
+                tokens.push(Token::new(TokenTypes::COMMA));
+            }
             '"' => {
                 if textlookup {
                     tokens.push(Token::new(TokenTypes::TEXT { text: wordbuf }));
@@ -83,7 +93,9 @@ pub fn parse_tokenize(reader: FileReader) -> Vec<Token> {
                 tokens.push(Token::new(TokenTypes::LBRACKET));
             }
             ')' => {
-                if let Some(number) = try_number(&wordbuf) {
+                if let Some(keyword) = test_keyword(&wordbuf) {
+                    tokens.push(keyword);
+                } else if let Some(number) = try_number(&wordbuf) {
                     tokens.push(Token::new(TokenTypes::NUMBER { val: number }));
                     numlookup = false;
                 } else if wordbuf.len() >= 1 {
@@ -93,6 +105,7 @@ pub fn parse_tokenize(reader: FileReader) -> Vec<Token> {
                     wordbuf = String::new();
                     tokens.push(Token::new(ident));
                 }
+                wordbuf = String::new();
                 tokens.push(Token::new(TokenTypes::RBRACKET));
                 textlookup = false;
                 numlookup = false;
@@ -169,11 +182,17 @@ pub fn test_keyword(word: &String) -> Option<Token> {
         "Bool" => Some(Token {
             variant: TokenTypes::BOOLTYPE,
         }),
+        "Function" => Some(Token {
+            variant: TokenTypes::FUNCTYPE,
+        }),
         "True" => Some(Token {
-            variant: TokenTypes::BOOL { val: true }
+            variant: TokenTypes::BOOL { val: true },
         }),
         "False" => Some(Token {
-            variant: TokenTypes::BOOL { val: false }
+            variant: TokenTypes::BOOL { val: false },
+        }),
+        "return" => Some(Token {
+            variant: TokenTypes::RETURN,
         }),
         _ => None,
     }

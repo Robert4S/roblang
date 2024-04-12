@@ -66,7 +66,7 @@ impl Program {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StatementNode {
     Assign(AssignNode),
     Declare(DeclareNode),
@@ -118,13 +118,12 @@ pub enum Types {
     String,
     Bool,
     Function,
+    Nothing,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BlockNode {
-    pub start: String,
     pub children: Vec<StatementNode>,
-    pub end: String,
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +150,7 @@ pub enum Value {
     Lit(Literal),
     Expr(Expression),
     Ident(IdentifierNode),
+    Func(Function),
     Nothing,
 }
 
@@ -161,6 +161,13 @@ impl Value {
             _ => false,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Function {
+    pub params: Vec<IdentifierNode>,
+    pub ret: Types,
+    pub body: BlockNode,
 }
 
 #[derive(Debug, Clone)]
@@ -176,30 +183,30 @@ pub enum Literal {
     Text(TextLit),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AssignNode {
     pub ident: IdentifierNode,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DecAssignNode {
     pub ident: IdentifierNode,
     pub i_type: Types,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DeclareNode {
     pub ident: IdentifierNode,
     pub i_type: Types,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CallNode {
     pub func: IdentifierNode,
     pub params: Vec<IdentifierNode>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConditionalNode {
     pub condition: Bool,
     pub block: BlockNode,
@@ -231,7 +238,7 @@ pub enum BoolOps {
     Lesser,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ReturnNode {
     pub value: Option<Value>,
 }
