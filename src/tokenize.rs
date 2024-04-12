@@ -129,7 +129,7 @@ pub fn parse_tokenize(reader: FileReader) -> Vec<Token> {
                 }
                 tokens.push(Token::new(TokenTypes::COLON));
             }
-            '\n' | '\t' => {
+            '\n' | '\t' | '\r' => {
                 continue;
             }
             _ => {
