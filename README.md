@@ -4,3 +4,5 @@ I am an IB computer sciences student, and this compiler is a pet project of mine
 
 Note:
 The compiler is not currently functional, as I am still developing the parser for it, but feel free to have a look at the current source code.
+
+[Documentation](docs.md)
