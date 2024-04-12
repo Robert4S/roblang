@@ -1,5 +1,4 @@
 let addOne: Function = (base: Number) -> Number {
 	let x: Number = 10;
 }
-
 let x_ref: Number = x;
