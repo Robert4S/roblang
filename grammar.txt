@@ -1,0 +1,25 @@
+<Program> :: <Block>*
+<Block> ::= <Start> <Statement>* <End>
+<Start> ::= ‘{’
+<End> ::= ‘}’
+<Statement> ::= <Assign> | <Declare> | <Call> | <Conditional> | <Return>
+<Return> ::= ‘return’ <Identifier ∈ Assign> ‘;’
+<Declare> ::= ‘let’ <Identifier> ‘:’  <Type> ‘;’
+<Identifier> ::= (( ∈ { all alphabetic characters } ) (∈ { all alphanumeric characters })*) <Type>
+<Assign> ::= <Identifier ∈ Declare> ‘=’ <Value> ‘;’
+<Type> ::= Number | String | Bool | Function
+<Number> ::= <Number Literal> | <Number Expression>
+<Number Literal> ::= ∈ ℤ
+<Bool> ::= <Bool Literal> | <Bool Expression>
+<Bool Literal> ::= True | False
+<String> ::= ‘ “ ’  ( ∈ { all alphanumeric characters } )* ‘ ” ’
+<Function> ::= ‘(’ <Parameter>* ‘)’ ‘->’ <Type> <Block>
+<Value> ::= <Literal> | <Identifier ∈ Assign> | <Block> | <Expression> | <Call> |
+<Expression> ::= <Number Expression> | <Bool Expression>
+<Number Expression> ::= <Number> <Operator> <Number>
+<Bool Expression> ::= ( <Value> ‘==’ <Value> ) | ( <Number> ‘<’ | ‘<=’ | ‘>’ | ‘>=’ <Number>)
+<Operator> ::= ‘+’ | ‘-’ | ‘*’ | ‘/’
+<Literal> ::= <Number Literal> | <String> | <Bool Literal> | <Function>
+<Parameter> ::= <Identifier> ‘:’ <Type>
+<Call> ::= <Identifier ∈ Function> ‘(’ <Value>* ‘)’ ‘;’
+<Conditional> ::= if  ‘(’ <Bool> ‘)’ <Block>

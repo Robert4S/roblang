@@ -1,0 +1,3 @@
+let x: Number = 10;
+let y: Text = "hello world";
+let y_ref: Text = y;
