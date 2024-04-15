@@ -1,4 +1,7 @@
-let addOne: Function = (base: Number) -> Number {
-	let x: Number = 10;
-}
-let x_ref: Number = x;
+let addNums: Function = (base: Number, add: Number) -> Number {
+	let x: Number = base + add;
+	return x;
+};
+let y: Number = 20;
+let z: Number = y;
+let ooga: Text = "hello \: there"

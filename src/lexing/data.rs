@@ -11,6 +11,11 @@ pub enum TokenTypes {
     PLUS,
     MINUS,
     EQ,
+    IF,
+    ELSE,
+    MOD,
+    OR,
+    AND,
     LBRACKET,
     RBRACKET,
     LCURLY,
@@ -27,12 +32,24 @@ pub enum TokenTypes {
     EOF,
     COMMA,
     RETURN,
+    AMPER,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Token {
+    pub variant: TokenTypes,
+    pub line_num: usize,
 }
 
 impl Token {
     pub fn variant_name(&self) -> &str {
+        use TokenTypes;
         match self.variant {
             TokenTypes::PRINT => "PRINT",
+            TokenTypes::IF => "IF",
+            TokenTypes::AND => "AND",
+            TokenTypes::OR => "OR",
+            TokenTypes::MOD => "MOD",
             TokenTypes::EXIT => "EXIT",
             TokenTypes::TEXT { text: _ } => "TEXT",
             TokenTypes::NUMBER { val: _ } => "NUMBER",
@@ -59,18 +76,16 @@ impl Token {
             TokenTypes::NOTHINGTYPE => "NOTHINGTYPE",
             TokenTypes::COMMA => "COMMA",
             TokenTypes::RETURN => "RETURN",
+            TokenTypes::AMPER => "AMPER",
+            TokenTypes::ELSE => "ELSE",
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Token {
-    pub variant: TokenTypes,
-}
 
 impl Token {
-    pub fn new(tipe: TokenTypes) -> Self {
-        Self { variant: tipe }
+    pub fn new(tipe: TokenTypes, line: usize) -> Self {
+        Self { variant: tipe, line_num: line }
     }
 }
 

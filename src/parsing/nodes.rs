@@ -1,4 +1,3 @@
-use crate::data::*;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -165,10 +164,12 @@ impl Value {
 
 #[derive(Debug, Clone)]
 pub struct Function {
+    pub name: String,
     pub params: Vec<IdentifierNode>,
     pub ret: Types,
     pub body: BlockNode,
 }
+
 
 #[derive(Debug, Clone)]
 pub enum Expression {
@@ -209,16 +210,17 @@ pub struct CallNode {
 #[derive(Debug, Clone)]
 pub struct ConditionalNode {
     pub condition: Bool,
-    pub block: BlockNode,
+    pub body: BlockNode,
 }
 
 #[derive(Debug, Clone)]
 pub enum Bool {
     Lit(BoolLiteral),
     Expr(BoolExpr),
+    Ident(IdentifierNode),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BoolLiteral {
     True,
     False,
@@ -240,7 +242,7 @@ pub enum BoolOps {
 
 #[derive(Debug, Clone)]
 pub struct ReturnNode {
-    pub value: Option<Value>,
+    pub value: Value,
 }
 
 #[derive(Debug)]
@@ -251,4 +253,42 @@ pub struct NumExpressionNode {
 #[derive(Debug, Clone)]
 pub struct TextLit {
     pub value: String,
+}
+
+pub fn print_tree(node: &StatementNode, indent: usize) {
+    let indentation = " ".repeat(indent * 3); // 2 spaces per indentation level
+    match node {
+        StatementNode::Assign(node) => println!("{}Assign: {:?}", indentation, node),
+        StatementNode::Declare(node) => println!("{}Declare: {:?}", indentation, node),
+        StatementNode::DeclareAssign(node) => {
+            match node.ident.i_type {
+                Types::Function => {
+                    let Some(inner) = &node.ident.value else { todo!() };
+                    match inner.as_ref() {
+                        Value::Func(funcnode) => {
+                            let children = &funcnode.body.children;
+                            println!("Declare function {} with params {:?}", node.ident.name, funcnode.params);
+                            print_program(children, indent + 1);
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {
+                    println!("{}DeclareAssign: {:?}", indentation, node)
+                }
+            }
+        }
+        StatementNode::Call(node) => println!("{}Call: {:?}", indentation, node),
+        StatementNode::Conditional(node) => {
+            println!("{}Conditional: {:?}", indentation, node);
+            print_program(&node.body.children, indent + 1);
+        }
+        StatementNode::Return(node) => println!("{}Return: {:?}", indentation, node),
+    }
+}
+
+pub fn print_program(program: &Vec<StatementNode>, indent: usize) {
+    for child in program {
+        print_tree(child, indent);
+    }
 }

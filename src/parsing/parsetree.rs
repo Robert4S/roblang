@@ -1,9 +1,8 @@
-use crate::data::*;
-use crate::nodes::*;
-use std::cmp::PartialEq;
-
 use std::iter::Peekable;
 use std::slice::Iter;
+
+use crate::lexing::data::*;
+use crate::parsing::nodes::*;
 
 #[derive(Debug)]
 pub struct ParseTree<'a> {
@@ -12,6 +11,7 @@ pub struct ParseTree<'a> {
     pub root: Program,
     pub symbols: SymbolStack,
 }
+
 
 impl<'a> ParseTree<'a> {
     pub fn new(tokens: &'a Vec<Token>) -> Self {
@@ -25,7 +25,7 @@ impl<'a> ParseTree<'a> {
 
     pub fn parse(&mut self) -> &Program {
         let mut children = Vec::new();
-        if let Some(masterblock) = self.parse_until(TokenTypes::EOF, None) {
+        if let Some(masterblock) = self.parse_until(TokenTypes::EOF, None, None) {
             children = masterblock.children.clone();
         }
         self.root.children = children;
@@ -36,6 +36,7 @@ impl<'a> ParseTree<'a> {
         &mut self,
         end_token: TokenTypes,
         params: Option<Vec<IdentifierNode>>,
+        rettype: Option<Types>,
     ) -> Option<BlockNode> {
         let mut basetbl = SymbolTable::new();
         if let Some(params) = params {
@@ -46,8 +47,8 @@ impl<'a> ParseTree<'a> {
         let mut newblock = BlockNode {
             children: Vec::new(),
         };
-        let mocktkn = Token::new(end_token.clone());
-        let eof = (end_token == TokenTypes::EOF);
+        let mocktkn = Token::new(end_token.clone(), 0);
+        let eof = end_token == TokenTypes::EOF;
         self.symbols.push(basetbl);
         'mainloop: while let Some(current) = self.iter.next() {
             if !eof && (current.variant_name() == mocktkn.variant_name()) {
@@ -60,11 +61,92 @@ impl<'a> ParseTree<'a> {
                         newblock.children.push(stmt);
                     }
                 }
+                TokenTypes::RETURN => {
+                    if rettype.is_none() {
+                        eprintln!("line {}: Cannot return from global scope", current.line_num);
+                        return None;
+                    }
+                    let targtype = rettype.clone().unwrap();
+                    if let Some(value) = self.parse_return() {
+                        match value.value {
+                            Value::Ident(ref inner) => {
+                                if inner.i_type != targtype {
+                                    eprintln!("Line {}: Mismatched return type.", current.line_num);
+                                    return None;
+                                }
+                            }
+                            Value::Nothing => {
+                                if targtype != Types::Nothing {
+                                    eprintln!(
+                                        "Line {}: Mismatched return type, found Nothing",
+                                        current.line_num
+                                    );
+                                    return None;
+                                }
+                            }
+                            _ => {}
+                        }
+                        let stmt = StatementNode::Return(value.clone());
+                        newblock.children.push(stmt);
+                    }
+                },
+                TokenTypes::IF => {
+                    let Some(cond) = self.parse_conditional() else {
+                        eprintln!("Line {}: Failed to parse conditional", current.line_num);
+                        return None;
+                    };
+                    let stmt = StatementNode::Conditional(cond);
+                    newblock.children.push(stmt);
+                }
                 _ => {}
             }
         }
         self.symbols.pop();
         Some(newblock)
+    }
+
+    fn parse_return(&mut self) -> Option<ReturnNode> {
+        if let Some(ident) = self.iter.next() {
+            match &ident.variant {
+                TokenTypes::IDENT { name } => {
+                    if let Some(identnode) = self.symbols.current()?.get(name) {
+                        let retnode = ReturnNode {
+                            value: Value::Ident(identnode.clone()),
+                        };
+                        if let Some(semi) = self.iter.peek() {
+                            if semi.variant_name() == "SEMI" {
+                                self.iter.next();
+                                return Some(retnode);
+                            } else {
+                                eprintln!("Line {}: Expected SEMI", semi.line_num);
+                                return None;
+                            }
+                        } else {
+                            eprintln!("Line {}: Expected SEMI, found EOF", ident.line_num);
+                            return None;
+                        }
+                    } else {
+                        eprintln!(
+                            "Line {}: Expected a return value, found EOF",
+                            ident.line_num
+                        );
+                        return None;
+                    }
+                }
+                TokenTypes::SEMI => {
+                    return Some(ReturnNode {
+                        value: Value::Nothing,
+                    });
+                }
+                _ => {
+                    eprintln!("Line {}: A function must either return an identifier or nothing. assign the value you want to return to a variable, then return that variable.", ident.line_num);
+                    return None;
+                }
+            }
+        } else {
+            eprintln!("Expected IDENT, found EOF");
+            return None;
+        }
     }
 
     fn parse_declare_assign(&mut self) -> Option<DecAssignNode> {
@@ -78,7 +160,8 @@ impl<'a> ParseTree<'a> {
                 }
                 _ => {
                     eprintln!(
-                        "Expected identifier after let but found {}",
+                        "Line {}: Expected identifier after let but found {}",
+                        next.line_num,
                         next.variant_name()
                     );
                     return None;
@@ -87,7 +170,7 @@ impl<'a> ParseTree<'a> {
         }
         if let Some(col) = self.iter.next() {
             if col.variant_name() != "COLON" {
-                eprintln!("Expected ':' after declaration");
+                eprintln!("Line {}: Expected ':' after declaration", col.line_num);
                 return None;
             }
         } else {
@@ -110,7 +193,10 @@ impl<'a> ParseTree<'a> {
                     i_type = Types::Function;
                 }
                 _ => {
-                    eprintln!("Expected TYPE during declaration");
+                    eprintln!(
+                        "Line {}: Expected TYPE during declaration",
+                        typetkn.line_num
+                    );
                     return None;
                 }
             }
@@ -121,7 +207,11 @@ impl<'a> ParseTree<'a> {
 
         if let Some(eqtoken) = self.iter.next() {
             if eqtoken.variant_name() != "EQ" {
-                eprintln!("Expected EQ, got {}", eqtoken.variant_name());
+                eprintln!(
+                    "Line {}: Expected EQ, got {}",
+                    eqtoken.line_num,
+                    eqtoken.variant_name()
+                );
                 return None;
             }
         } else {
@@ -130,7 +220,7 @@ impl<'a> ParseTree<'a> {
         }
 
         if i_type == Types::Function {
-            if let Some(val) = self.parse_function() {
+            if let Some(val) = self.parse_function(&name) {
                 value = Value::Func(val);
                 let ident = IdentifierNode::new(&name, &i_type, value);
                 if let Some(table) = self.symbols.current_mut() {
@@ -148,7 +238,10 @@ impl<'a> ParseTree<'a> {
                     match i_type {
                         Types::Number => {}
                         _ => {
-                            eprintln!("Expected {:?}, but got expression of type Number", i_type);
+                            eprintln!(
+                                "Line {}: Expected {:?}, but got expression of type Number",
+                                valtoken.line_num, i_type
+                            );
                             return None;
                         }
                     }
@@ -163,14 +256,21 @@ impl<'a> ParseTree<'a> {
                             value = Value::Ident(ident.clone());
                         }
                     } else {
-                        eprintln!("No identifier {} in the current scope.", name.to_string());
+                        eprintln!(
+                            "Line {}: No identifier {} in the current scope.",
+                            valtoken.line_num,
+                            name.to_string()
+                        );
                     }
                 }
                 TokenTypes::BOOL { val } => {
                     match i_type {
                         Types::Bool => {}
                         _ => {
-                            eprintln!("Expected {:?}, but got expression of type Bool", i_type);
+                            eprintln!(
+                                "Line {}: Expected {:?}, but got expression of type Bool",
+                                valtoken.line_num, i_type
+                            );
                             return None;
                         }
                     }
@@ -187,7 +287,10 @@ impl<'a> ParseTree<'a> {
                     match i_type {
                         Types::String => {}
                         _ => {
-                            eprintln!("Expected {:?}, but got expression of type String", i_type);
+                            eprintln!(
+                                "Line {}: Expected {:?}, but got expression of type String",
+                                valtoken.line_num, i_type
+                            );
                             return None;
                         }
                     }
@@ -216,12 +319,12 @@ impl<'a> ParseTree<'a> {
         }
     }
 
-    fn parse_function(&mut self) -> Option<Function> {
+    fn parse_function(&mut self, name: &String) -> Option<Function> {
         let mut fnparams: Option<Vec<IdentifierNode>> = None;
         let mut hierdiefunksie: Option<Function> = None;
         let mut rettype = Types::Nothing;
         if let Some(lbrac) = self.iter.next() {
-            if !(Self::val_token(lbrac, "LBRACKET")) {
+            if !Self::val_token(lbrac, "LBRACKET") {
                 return None;
             }
         } else {
@@ -236,7 +339,7 @@ impl<'a> ParseTree<'a> {
         }
 
         if let Some(arrow) = self.iter.next() {
-            if !(Self::val_token(&arrow, "ARROW")) {
+            if !Self::val_token(&arrow, "ARROW") {
                 return None;
             }
         } else {
@@ -252,29 +355,27 @@ impl<'a> ParseTree<'a> {
                 TokenTypes::TEXTTYPE => {
                     rettype = Types::String;
                 }
-                TokenTypes::NUMTYPE => {
-                    rettype = Types::Number;
-                }
                 TokenTypes::BOOLTYPE => {
                     rettype = Types::Bool;
                 }
                 _ => {
-                    eprintln!("Expected RETURN TYPE of function. \nIf your function does not return, use 'Nothing'");
+                    eprintln!("line {}: Expected RETURN TYPE of function. \nIf your function does not return, use 'Nothing'", rettipe.line_num);
                     return None;
                 }
             }
         }
 
         if let Some(lcurl) = self.iter.next() {
-            if !(Self::val_token(&lcurl, "LCURLY")) {
+            if !Self::val_token(&lcurl, "LCURLY") {
                 return None;
             }
         }
 
-        if let Some(block) = self.parse_until(TokenTypes::RCURLY, Some(fnparams.clone())?) {
+        if let Some(block) = self.parse_until(TokenTypes::RCURLY, Some(fnparams.clone())?, Some(rettype.clone())) {
             let func = Function {
+                name: name.clone(),
                 params: Some(fnparams)??,
-                ret: rettype,
+                ret: rettype.clone(),
                 body: block,
             };
             hierdiefunksie = Some(func.clone());
@@ -284,7 +385,12 @@ impl<'a> ParseTree<'a> {
 
     fn val_token(base: &Token, target: &str) -> bool {
         if !(base.variant_name() == target) {
-            eprintln!("Expected {}, but found {}", target, base.variant_name());
+            eprintln!(
+                "Line {}: Expected {}, but found {}",
+                base.line_num,
+                target,
+                base.variant_name()
+            );
             return false;
         }
         true
@@ -311,7 +417,11 @@ impl<'a> ParseTree<'a> {
                             let mytype = mytype.unwrap();
                             paramtype = mytype.clone();
                         } else {
-                            eprintln!("Expected COLON, found {:?}", colon.variant_name());
+                            eprintln!(
+                                "Line {}: Expected COLON, found {:?}",
+                                colon.line_num,
+                                colon.variant_name()
+                            );
                             return None;
                         }
                     } else {
@@ -319,8 +429,15 @@ impl<'a> ParseTree<'a> {
                         return None;
                     }
                 }
+                TokenTypes::COMMA => {
+                    continue;
+                }
                 _ => {
-                    eprintln!("Expected parameter, found {}", param.variant_name());
+                    eprintln!(
+                        "Line {}: Expected parameter, found {}",
+                        param.line_num,
+                        param.variant_name()
+                    );
                     return None;
                 }
             }
@@ -356,5 +473,56 @@ impl<'a> ParseTree<'a> {
             eprintln!("Expected type annotation, got EOF");
             return None;
         }
+    }
+
+    fn parse_conditional(&mut self) -> Option<ConditionalNode> {
+        let mut thisbool = Bool::Lit(BoolLiteral::False);
+        if let Some(next) = self.iter.next() {
+            match &next.variant {
+                TokenTypes::IDENT {name} => {
+                    if let Some(boolident) = self.symbols.current()?.get(&name) {
+                        if boolident.i_type == Types::Bool {
+                            thisbool = Bool::Ident(boolident.clone());
+                        } else {
+                            eprintln!("Line {}: Expected BOOL, {} has type of {:?}", next.line_num, boolident.name, boolident.i_type);
+                            return None;
+                        }
+                    } else {
+                        eprintln!("Unexpected EOF");
+                        return None;
+                    }
+                },
+                TokenTypes::BOOL {val} => {
+                    thisbool = {
+                        if *val {
+                            Bool::Lit(BoolLiteral::True)
+                        } else {
+                            Bool::Lit(BoolLiteral::False)
+                        }
+                    };
+                }
+                _ => {
+                    eprintln!("Line {}: Expected bool literal or bool identifier.", next.line_num);
+                    return None;
+                }
+            }
+            let Some(lcurly) = self.iter.next() else {
+                eprintln!("Unexpected EOF");
+                return None;
+            };
+            if lcurly.variant == TokenTypes::LCURLY {
+                let Some(body) = self.parse_until(TokenTypes::RCURLY, None, None) else {
+                    eprintln!("Line {}: Could not parse conditional body.", lcurly.line_num);
+                    return None;
+                };
+                let condnode = ConditionalNode {
+                    condition: thisbool,
+                    body: body,
+                };
+                return Some(condnode);
+            }
+        }
+        eprintln!("Unexpected EOF");
+        None
     }
 }

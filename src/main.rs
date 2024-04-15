@@ -1,11 +1,13 @@
 #![allow(warnings)]
 
-mod data;
-mod nodes;
-mod parsetree;
-mod tokenize;
-
 use clap::Parser;
+
+use crate::lexing::*;
+use crate::parsing::*;
+
+mod parsing;
+mod lexing;
+mod generation;
 
 #[derive(Parser, Debug)]
 /// Compiler for the roblang language. Everything is broken, nothing works, and all you get are some unlinked, possibly incorrect parse tree nodes.
@@ -52,7 +54,7 @@ fn build(file: &String) {
     }
     let mut parser = parsetree::ParseTree::new(&tokens);
     let mut root = parser.parse();
-    for i in &root.children {
-        println!("{:?}", i);
-    }
+    nodes::print_program(&root.children, 0)
 }
+
+
