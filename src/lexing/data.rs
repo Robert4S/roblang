@@ -11,6 +11,9 @@ pub enum TokenTypes {
     PLUS,
     MINUS,
     EQ,
+    BOOLEQ,
+    GREATER,
+    LESSER,
     IF,
     ELSE,
     MOD,
@@ -33,6 +36,7 @@ pub enum TokenTypes {
     COMMA,
     RETURN,
     AMPER,
+    INLINE,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -58,6 +62,9 @@ impl Token {
             TokenTypes::PLUS => "PLUS",
             TokenTypes::MINUS => "MINUS",
             TokenTypes::EQ => "EQ",
+            TokenTypes::BOOLEQ => "BOOLEQ",
+            TokenTypes::GREATER => "GREATER",
+            TokenTypes::LESSER => "LESSER",
             TokenTypes::LBRACKET => "LBRACKET",
             TokenTypes::RBRACKET => "RBRACKET",
             TokenTypes::LCURLY => "LCURLY",
@@ -78,6 +85,7 @@ impl Token {
             TokenTypes::RETURN => "RETURN",
             TokenTypes::AMPER => "AMPER",
             TokenTypes::ELSE => "ELSE",
+            TokenTypes::INLINE => "INLINE"
         }
     }
 }

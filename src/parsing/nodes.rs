@@ -50,9 +50,18 @@ impl SymbolStack {
     pub fn current_mut(&mut self) -> Option<&mut SymbolTable> {
         self.stack.last_mut()
     }
+
+    pub fn search_down(&self, name: &String) -> Option<IdentifierNode> {
+        for table in self.stack.iter().rev() {
+            if let Some(ident) = table.get(name) {
+                return Some(ident.clone());
+            }
+        }
+        None
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Program {
     pub children: Vec<StatementNode>,
 }
@@ -61,6 +70,34 @@ impl Program {
     pub fn new() -> Self {
         Program {
             children: Vec::new(),
+        }
+    }
+
+    pub fn check_top(&self) -> Option<()> {
+        let mut maincheck = false;
+        for child in &self.children {
+            match child {
+                StatementNode::DeclareAssign(node) => {
+                    if node.i_type == Types::Function {
+                        if node.ident.name == "main".to_string() {
+                            maincheck = true;
+                        }
+                        continue;
+                    }
+                    eprintln!("Top level code coming soon");
+                    return None;
+                }
+                _ => {
+                    eprintln!("Top level code coming soon");
+                    return None;
+                }
+            }
+        }
+        if maincheck {
+            Some(())
+        } else {
+            eprintln!("No main function found");
+            None
         }
     }
 }
@@ -73,7 +110,10 @@ pub enum StatementNode {
     Call(CallNode),
     Conditional(ConditionalNode),
     Return(ReturnNode),
+    Inline(InlineC),
 }
+#[derive(Debug, Clone)]
+pub struct InlineC(pub String);
 
 #[derive(Debug, Clone)]
 pub enum Number {
@@ -132,6 +172,8 @@ pub struct IdentifierNode {
     pub value: Option<Box<Value>>,
 }
 
+struct ParseError;
+
 impl IdentifierNode {
     pub fn new(name: &String, i_type: &Types, val: Value) -> Self {
         let i_type = i_type.clone();
@@ -142,6 +184,33 @@ impl IdentifierNode {
             value: Some(valbox),
         }
     }
+
+    pub fn from(val: Value) -> Option<Self> {
+        let i_type = {
+            match &val {
+                Value::Ident(node) => node.i_type.clone(),
+                Value::Lit(lit) => match lit {
+                    Literal::Num(_) => Types::Number,
+                    Literal::Bool(_) => Types::Bool,
+                    Literal::Text(_) => Types::String,
+                },
+                Value::Expr(expr) => match expr {
+                    Expression::Num(_) => Types::Number,
+                    Expression::Bool(_) => Types::Bool,
+                },
+                Value::Nothing => {
+                    return None;
+                }
+                Value::Func(_) => Types::Function,
+                Value::Call(node) => node.func.ret.clone(),
+            }
+        };
+        Some(IdentifierNode {
+            i_type,
+            value: Some(Box::new(val.clone())),
+            name: String::from(""),
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -150,6 +219,7 @@ pub enum Value {
     Expr(Expression),
     Ident(IdentifierNode),
     Func(Function),
+    Call(CallNode),
     Nothing,
 }
 
@@ -169,7 +239,6 @@ pub struct Function {
     pub ret: Types,
     pub body: BlockNode,
 }
-
 
 #[derive(Debug, Clone)]
 pub enum Expression {
@@ -203,7 +272,7 @@ pub struct DeclareNode {
 
 #[derive(Debug, Clone)]
 pub struct CallNode {
-    pub func: IdentifierNode,
+    pub func: Function,
     pub params: Vec<IdentifierNode>,
 }
 
@@ -218,6 +287,7 @@ pub enum Bool {
     Lit(BoolLiteral),
     Expr(BoolExpr),
     Ident(IdentifierNode),
+    Call(CallNode),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -228,9 +298,9 @@ pub enum BoolLiteral {
 
 #[derive(Debug, Clone)]
 pub struct BoolExpr {
-    left: Box<Value>,
-    operator: BoolOps,
-    right: Box<Value>,
+    pub left: Box<Value>,
+    pub operator: BoolOps,
+    pub right: Box<Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -260,30 +330,34 @@ pub fn print_tree(node: &StatementNode, indent: usize) {
     match node {
         StatementNode::Assign(node) => println!("{}Assign: {:?}", indentation, node),
         StatementNode::Declare(node) => println!("{}Declare: {:?}", indentation, node),
-        StatementNode::DeclareAssign(node) => {
-            match node.ident.i_type {
-                Types::Function => {
-                    let Some(inner) = &node.ident.value else { todo!() };
-                    match inner.as_ref() {
-                        Value::Func(funcnode) => {
-                            let children = &funcnode.body.children;
-                            println!("Declare function {} with params {:?}", node.ident.name, funcnode.params);
-                            print_program(children, indent + 1);
-                        }
-                        _ => {}
+        StatementNode::DeclareAssign(node) => match node.ident.i_type {
+            Types::Function => {
+                let Some(inner) = &node.ident.value else {
+                    todo!()
+                };
+                match inner.as_ref() {
+                    Value::Func(funcnode) => {
+                        let children = &funcnode.body.children;
+                        println!(
+                            "Declare function {} with params {:?}",
+                            node.ident.name, funcnode.params
+                        );
+                        print_program(children, indent + 1);
                     }
-                }
-                _ => {
-                    println!("{}DeclareAssign: {:?}", indentation, node)
+                    _ => {}
                 }
             }
-        }
+            _ => {
+                println!("{}DeclareAssign: {:?}", indentation, node)
+            }
+        },
         StatementNode::Call(node) => println!("{}Call: {:?}", indentation, node),
         StatementNode::Conditional(node) => {
             println!("{}Conditional: {:?}", indentation, node);
             print_program(&node.body.children, indent + 1);
         }
         StatementNode::Return(node) => println!("{}Return: {:?}", indentation, node),
+        StatementNode::Inline(inline) => println!("{}Inline: {:?}", indentation, inline),
     }
 }
 

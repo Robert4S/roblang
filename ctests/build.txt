@@ -1,0 +1,8 @@
+to make object:
+gcc -g -O -c implementation.c
+
+to make lib file:
+ar rcs libimplementation.a implementation.o
+
+then to build:
+gcc test.c -I./c-vector -L./c-vector -lvec -o test

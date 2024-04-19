@@ -12,7 +12,6 @@ pub struct ParseTree<'a> {
     pub symbols: SymbolStack,
 }
 
-
 impl<'a> ParseTree<'a> {
     pub fn new(tokens: &'a Vec<Token>) -> Self {
         ParseTree {
@@ -54,7 +53,7 @@ impl<'a> ParseTree<'a> {
             if !eof && (current.variant_name() == mocktkn.variant_name()) {
                 break 'mainloop;
             }
-            match current.variant {
+            match &current.variant {
                 TokenTypes::LET => {
                     if let Some(node) = self.parse_declare_assign() {
                         let stmt = StatementNode::DeclareAssign(node);
@@ -89,14 +88,67 @@ impl<'a> ParseTree<'a> {
                         let stmt = StatementNode::Return(value.clone());
                         newblock.children.push(stmt);
                     }
-                },
+                }
                 TokenTypes::IF => {
-                    let Some(cond) = self.parse_conditional() else {
+                    let Some(cond) = self.parse_conditional(rettype.clone()?) else {
                         eprintln!("Line {}: Failed to parse conditional", current.line_num);
                         return None;
                     };
                     let stmt = StatementNode::Conditional(cond);
                     newblock.children.push(stmt);
+                },
+                TokenTypes::INLINE => {
+                    let Some(inlinenode) = self.parse_inline() else {
+                        eprintln!("Line {}: Failed to parse inline", current.line_num);
+                        return None;
+                    };
+                    let stmt = StatementNode::Inline(inlinenode);
+                    newblock.children.push(stmt);
+                }
+                TokenTypes::IDENT { name } => {
+                    let Some(lbrac) = self.iter.next() else {
+                        eprintln!("Line {}: Expected '(' during call", current.line_num);
+                        return None;
+                    };
+                    if lbrac.variant != TokenTypes::LBRACKET {
+                        eprintln!(
+                            "Line {}: Expected '(' during function call",
+                            current.line_num
+                        );
+                        let mockfunc = Function {
+                            params: Vec::new(),
+                            name: String::from(""),
+                            body: BlockNode {
+                                children: Vec::new(),
+                            },
+                            ret: Types::Nothing,
+                        };
+                        let _ = self.parse_call(mockfunc);
+                        return None;
+                    }
+                    let Some(func) = self.symbols.search_down(name) else {
+                        eprintln!(
+                            "Line {}: No identifier {} found in current scope",
+                            current.line_num, name
+                        );
+                        return None;
+                    };
+                    match func.value {
+                        Some(mybox) => match *mybox {
+                            Value::Func(myfunc) => {
+                                let callnode = self.parse_call(myfunc)?;
+                                newblock.children.push(StatementNode::Call(callnode));
+                            }
+                            _ => {
+                                eprintln!(
+                                    "Line {}: Identifier {} is not a function",
+                                    current.line_num, func.name
+                                );
+                                return None;
+                            }
+                        },
+                        None => panic!(),
+                    }
                 }
                 _ => {}
             }
@@ -105,11 +157,19 @@ impl<'a> ParseTree<'a> {
         Some(newblock)
     }
 
+    fn parse_inline(&mut self) ->  Option<InlineC> {
+        let next = self.iter.next()?;
+        match &next.variant {
+            TokenTypes::TEXT {text} => Some(InlineC(text.clone())),
+            _ => None,
+        }
+    }
+
     fn parse_return(&mut self) -> Option<ReturnNode> {
         if let Some(ident) = self.iter.next() {
             match &ident.variant {
                 TokenTypes::IDENT { name } => {
-                    if let Some(identnode) = self.symbols.current()?.get(name) {
+                    if let Some(identnode) = self.symbols.search_down(name) {
                         let retnode = ReturnNode {
                             value: Value::Ident(identnode.clone()),
                         };
@@ -127,7 +187,7 @@ impl<'a> ParseTree<'a> {
                         }
                     } else {
                         eprintln!(
-                            "Line {}: Expected a return value, found EOF",
+                            "Line {}: No identifier {name} found in current scope",
                             ident.line_num
                         );
                         return None;
@@ -230,6 +290,23 @@ impl<'a> ParseTree<'a> {
             } else {
                 println!("Problem parsing function");
             }
+        } else if i_type == Types::Bool {
+            let Some(val) = self.parse_bool() else {
+                return None;
+            };
+            let value: Value = {
+                match val {
+                    Bool::Lit(lit) => Value::Lit(Literal::Bool(lit)),
+                    Bool::Expr(expr) => Value::Expr(Expression::Bool(expr)),
+                    Bool::Ident(ident) => Value::Ident(ident),
+                    Bool::Call(call) => Value::Call(call),
+                }
+            };
+            let ident = IdentifierNode::new(&name, &i_type, value);
+            if let Some(table) = self.symbols.current_mut() {
+                table.insert(name, ident.clone());
+            }
+            return Some(DecAssignNode { ident, i_type });
         }
 
         if let Some(valtoken) = self.iter.next() {
@@ -251,8 +328,33 @@ impl<'a> ParseTree<'a> {
                     value = Value::Lit(lit);
                 }
                 TokenTypes::IDENT { name } => {
-                    if let Some(ident) = self.symbols.current()?.get(&name) {
-                        if ident.i_type == i_type {
+                    if let Some(ident) = self.symbols.search_down(&name) {
+                        if ident.i_type == Types::Function {
+                            let Some(lbrac) = self.iter.next() else {
+                                return None;
+                            };
+                            if lbrac.variant != TokenTypes::LBRACKET {
+                                eprintln!("Line {}: Expected '('", valtoken.line_num);
+                                return None;
+                            }
+                            let Some(mybox) = ident.value else {
+                                panic!();
+                            };
+                            let Value::Func(myfunc) = *mybox else {
+                                panic!();
+                            };
+                            if myfunc.ret != i_type {
+                                eprintln!(
+                                    "Line {}: Mismatched return type for call assignement",
+                                    valtoken.line_num
+                                );
+                                return None;
+                            }
+                            let Some(val) = self.parse_call(myfunc) else {
+                                return None;
+                            };
+                            value = Value::Call(val.clone());
+                        } else if ident.i_type == i_type {
                             value = Value::Ident(ident.clone());
                         }
                     } else {
@@ -299,7 +401,10 @@ impl<'a> ParseTree<'a> {
                     }));
                 }
                 _ => {
-                    eprintln!("Expected a value after EQ");
+                    eprintln!(
+                        "Line {}: Expected a value after EQ, but got {:?}",
+                        valtoken.line_num, valtoken
+                    );
                     return None;
                 }
             }
@@ -316,6 +421,52 @@ impl<'a> ParseTree<'a> {
         } else {
             eprintln!("Problem parsing delcaration");
             return None;
+        }
+    }
+
+    fn parse_bool(&mut self) -> Option<Bool> {
+        let Some(next) = self.iter.next() else {
+            eprintln!("Could not parse bool");
+            return None;
+        };
+        match &next.variant {
+            TokenTypes::BOOL { val } => {
+                let inner = {
+                    if *val {
+                        BoolLiteral::True
+                    } else {
+                        BoolLiteral::False
+                    }
+                };
+                Some(Bool::Lit(inner))
+            }
+            TokenTypes::IDENT { name } => {
+                let Some(node) = self.symbols.search_down(&name) else {
+                    eprintln!(
+                        "Line {}: No identifier {} found in current scope",
+                        next.line_num, name
+                    );
+                    return None;
+                };
+                if node.i_type == Types::Bool {
+                    Some(Bool::Ident(node.clone()))
+                } else if node.i_type == Types::Function {
+                    let lbrac = self.iter.next()?;
+                    if lbrac.variant != TokenTypes::LBRACKET {
+                        eprintln!("Line {}: Expected '(', found {} ", lbrac.line_num, lbrac.variant_name());
+                    }
+                    match *node.value? {
+                        Value::Func(func) => {
+                            let callnode = self.parse_call(func)?;
+                            Some(Bool::Call(callnode))
+                        },
+                        _ => panic!()
+                    }
+                } else {
+                    Some(Bool::Expr(self.parse_bool_expression(node.clone())?))
+                }
+            }
+            _ => todo!(),
         }
     }
 
@@ -371,7 +522,11 @@ impl<'a> ParseTree<'a> {
             }
         }
 
-        if let Some(block) = self.parse_until(TokenTypes::RCURLY, Some(fnparams.clone())?, Some(rettype.clone())) {
+        if let Some(block) = self.parse_until(
+            TokenTypes::RCURLY,
+            Some(fnparams.clone())?,
+            Some(rettype.clone()),
+        ) {
             let func = Function {
                 name: name.clone(),
                 params: Some(fnparams)??,
@@ -475,24 +630,32 @@ impl<'a> ParseTree<'a> {
         }
     }
 
-    fn parse_conditional(&mut self) -> Option<ConditionalNode> {
+    fn parse_conditional(&mut self, functype: Types) -> Option<ConditionalNode> {
         let mut thisbool = Bool::Lit(BoolLiteral::False);
         if let Some(next) = self.iter.next() {
             match &next.variant {
-                TokenTypes::IDENT {name} => {
-                    if let Some(boolident) = self.symbols.current()?.get(&name) {
+                TokenTypes::IDENT { name } => {
+                    if let Some(boolident) = self.symbols.search_down(&name) {
                         if boolident.i_type == Types::Bool {
                             thisbool = Bool::Ident(boolident.clone());
                         } else {
-                            eprintln!("Line {}: Expected BOOL, {} has type of {:?}", next.line_num, boolident.name, boolident.i_type);
-                            return None;
+                            // case of ident after if, will check for bool
+                            // expression eg. ident1 == ident2
+                            let Some(expr) = self.parse_bool_expression(boolident.clone()) else {
+                                eprintln!(
+                                    "Line {}: Could not parse bool expression.",
+                                    next.line_num
+                                );
+                                return None;
+                            };
+                            thisbool = Bool::Expr(expr);
                         }
                     } else {
-                        eprintln!("Unexpected EOF");
+                        eprintln!("Could not find identifier {name} in current scope");
                         return None;
                     }
-                },
-                TokenTypes::BOOL {val} => {
+                }
+                TokenTypes::BOOL { val } => {
                     thisbool = {
                         if *val {
                             Bool::Lit(BoolLiteral::True)
@@ -502,7 +665,10 @@ impl<'a> ParseTree<'a> {
                     };
                 }
                 _ => {
-                    eprintln!("Line {}: Expected bool literal or bool identifier.", next.line_num);
+                    eprintln!(
+                        "Line {}: Expected bool literal or bool identifier.",
+                        next.line_num
+                    );
                     return None;
                 }
             }
@@ -511,18 +677,159 @@ impl<'a> ParseTree<'a> {
                 return None;
             };
             if lcurly.variant == TokenTypes::LCURLY {
-                let Some(body) = self.parse_until(TokenTypes::RCURLY, None, None) else {
-                    eprintln!("Line {}: Could not parse conditional body.", lcurly.line_num);
+                let Some(body) = self.parse_until(TokenTypes::RCURLY, None, Some(functype)) else {
+                    eprintln!(
+                        "Line {}: Could not parse conditional body.",
+                        lcurly.line_num
+                    );
                     return None;
                 };
                 let condnode = ConditionalNode {
                     condition: thisbool,
-                    body: body,
+                    body,
                 };
                 return Some(condnode);
             }
         }
         eprintln!("Unexpected EOF");
         None
+    }
+
+    //TODO: why is it getting here when declaring a boolean in the body of an if statement?
+    fn parse_bool_expression(&mut self, left: IdentifierNode) -> Option<BoolExpr> {
+        let mut op = BoolOps::EQ;
+        let Some(next) = self.iter.next() else {
+            return None;
+        };
+        let mut right = Token::new(TokenTypes::NULL, 0);
+        match next.variant {
+            TokenTypes::BOOLEQ => {
+                op = BoolOps::EQ;
+            }
+            TokenTypes::GREATER => {
+                op = BoolOps::Greater;
+            }
+            TokenTypes::LESSER => {
+                op = BoolOps::Lesser;
+            }
+            _ => {
+                eprintln!("Unexpected boolean operator");
+                return None;
+            }
+        }
+
+        let Some(rightc) = self.iter.next() else {
+            eprintln!(
+                "Line {}: Expected an expression to the right of '=='",
+                next.line_num
+            );
+            return None;
+        };
+        right = rightc.clone();
+
+        match &right.variant {
+            TokenTypes::IDENT { name } => {
+                let Some(rightnode) = self.symbols.search_down(&name) else {
+                    eprintln!(
+                        "Line {}: Could not find identifier {} in the current scope",
+                        right.line_num, name,
+                    );
+                    return None;
+                };
+                if rightnode.i_type != left.i_type {
+                    eprintln!(
+                        "Line {}: Cannot compare values of different types.",
+                        right.line_num
+                    );
+                    return None;
+                }
+                let expr = BoolExpr {
+                    left: Box::new(Value::Ident(left)),
+                    operator: op,
+                    right: Box::new(Value::Ident(rightnode.clone())),
+                };
+                return Some(expr);
+            }
+            _ => {
+                eprintln!(
+                    "Line {}: Only identifers can be used in boolean expressions",
+                    right.line_num
+                );
+                return None;
+            }
+        }
+    }
+
+    pub fn parse_call(&mut self, func: Function) -> Option<CallNode> {
+        let mut args = Vec::new();
+        let mut nocomma = false;
+        while let Some(param) = self.iter.next() {
+            match &param.variant {
+                TokenTypes::RBRACKET => {
+                    break;
+                }
+                TokenTypes::IDENT { name } => {
+                    args.push(self.parse_arg_ident(name, param.line_num)?);
+                }
+                TokenTypes::NUMBER { val } => {
+                    args.push(Value::Lit(Literal::Num(NumLiteral { val: val.clone() })));
+                }
+                TokenTypes::TEXT { text: text1 } => {
+                    args.push(Value::Lit(Literal::Text(TextLit {
+                        value: text1.clone(),
+                    })));
+                }
+                TokenTypes::BOOL { val } => {
+                    let inner = {
+                        if *val {
+                            BoolLiteral::True
+                        } else {
+                            BoolLiteral::False
+                        }
+                    };
+                    args.push(Value::Lit(Literal::Bool(inner)));
+                }
+                _ => todo!(),
+            }
+            let comma = self.iter.peek()?;
+            if comma.variant == TokenTypes::COMMA {
+                self.iter.next();
+            } else if comma.variant == TokenTypes::RBRACKET {
+                self.iter.next();
+                break;
+            }
+        }
+        if args.len() != func.params.len() {
+            eprintln!(
+                "Wrong number of arguments for call to function {}",
+                func.name
+            );
+            return None;
+        }
+        let mut params_res: Option<Vec<IdentifierNode>> = args
+            .into_iter()
+            .map(|val| IdentifierNode::from(val.clone()))
+            .collect();
+        let params = params_res?;
+        for (index, param) in func.params.iter().enumerate() {
+            if param.i_type != params[index].i_type {
+                return None;
+            }
+        }
+        Some(CallNode {
+            func: func.clone(),
+            params,
+        })
+    }
+
+    fn parse_arg_ident(&self, name: &String, line: usize) -> Option<Value> {
+        let Some(idnode) = self.symbols.search_down(name) else {
+            eprintln!("Line {line}: No identifier {name} found");
+            return None;
+        };
+        match idnode.i_type {
+            Types::Function | Types::Nothing => None,
+            _ => Some(Value::Ident(idnode.clone())),
+        }
     }
 }

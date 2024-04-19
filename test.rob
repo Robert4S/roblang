@@ -1,7 +1,5 @@
-let addNums: Function = (base: Number, add: Number) -> Number {
-	let x: Number = base + add;
-	return x;
+let main: Function = () -> Number {
+	let fake: Number = 69;
+	inline "printf(\"fake is %d\n\", fake);";
+	return fake;
 };
-let y: Number = 20;
-let z: Number = y;
-let ooga: Text = "hello \: there"

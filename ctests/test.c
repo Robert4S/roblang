@@ -1,23 +1,26 @@
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "robIO.h"
 
-void fizzbuzz() {
-	for (int i = 1; i < 20; i++) {
-		if (i%5==0 && i%3==0) {
-			printf("%d Fizzbuzz\n", i);
-		} else if (i%5==0) {
-			printf("%d Fizz\n", i);
-		} else if (i%3==0) {
-			printf("%d Buzz\n", i);
-		}
-	}
-}
 
 int main() {
-	fizzbuzz();
+	int mynum = 5;
+	char mychar[] = "Hello world!";
+
+	struct object obj;
+	obj.content.c = mychar;
+	obj.type = CHAR;
+	showme("My object is {}\n", obj);
+	obj.content.i = mynum;
+	obj.type = INT;
+	int* int_vec = vector_create();
+	for (int i=0; i<100; i++) {
+		if (i%2 == 0) {
+			vector_add(&int_vec, i);
+		}
+	}
+	for (int i=0; i<vector_size(int_vec); i++) {
+		showme_int("Item no.{} in the vec is {}\n", i, int_vec[i], INT_MAX);
+	}
+	showme("My object again is {}\n", obj);
+
 	return 0;
 }
-
-

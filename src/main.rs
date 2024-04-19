@@ -2,12 +2,13 @@
 
 use clap::Parser;
 
+use crate::generation::generator;
 use crate::lexing::*;
 use crate::parsing::*;
 
-mod parsing;
-mod lexing;
 mod generation;
+mod lexing;
+mod parsing;
 
 #[derive(Parser, Debug)]
 /// Compiler for the roblang language. Everything is broken, nothing works, and all you get are some unlinked, possibly incorrect parse tree nodes.
@@ -25,8 +26,14 @@ struct Args {
 fn main() {
     let args = Args::parse();
     let run = (args.mode == "run");
+    let mut tokens = (args.mode == "tokens");
+    let mut nodes = args.mode == "nodes";
+    if args.mode == "fulldbg" {
+        nodes = true;
+        tokens = true;
+    }
     let buildfile = args.file;
-    build(&buildfile);
+    build(&buildfile, tokens, nodes);
     if run {
         let mut namechars = buildfile.chars().peekable();
         let mut newname = String::new();
@@ -39,22 +46,55 @@ fn main() {
         let robjstring = ".robj".to_string();
         newname = newname + &robjstring;
 
-        let process = std::process::Command::new("python3")
-            .arg(newname.clone())
-            .spawn()
-            .expect("could not run");
         return;
     }
 }
 
-fn build(file: &String) {
+fn build(file: &String, tokensshow: bool, nodes: bool) {
+    let robstd = std::env::var("ROBSTD").unwrap_or_default();
     let tokens = tokenize::parse_start(&file).expect("a problem magically appeared");
-    for i in tokens.clone() {
-        // println!("{:?}", i);
+    if tokensshow {
+        for i in tokens.clone() {
+            println!("{:?}", i);
+        }
     }
     let mut parser = parsetree::ParseTree::new(&tokens);
     let mut root = parser.parse();
-    nodes::print_program(&root.children, 0)
+    if root.check_top().is_none() {
+        return;
+    }
+    let gen = generator::Generator::new(root.clone());
+    let writeres = gen.write();
+    match writeres {
+        Err(_) => {
+            eprintln!("generation failed");
+        }
+        Ok(_) => {
+            eprintln!("Build success!");
+        }
+    }
+    let dotpos = {
+        let mut ind = 0;
+        for (index, item) in file.chars().enumerate() {
+            ind = index;
+            if item == '.' {
+                break;
+            }
+        }
+        ind
+    };
+    let fstr = file.split_at(dotpos).0;
+    let process = std::process::Command::new("gcc")
+        .arg("out.c")
+        .arg("-o")
+        .arg(fstr)
+        .arg(format!("-I{}", robstd))
+        .arg("-I/home/robert4/roblang/ctests/c-vector")
+        .arg("-L/home/robert4/roblang/ctests/c-vector")
+        .arg("-lvec")
+        .spawn()
+        .expect("could not run");
+    if nodes {
+        nodes::print_program(&root.children, 0);
+    }
 }
-
-
