@@ -7,4 +7,12 @@ The compiler is not currently functional, as I am still developing the parser fo
 
 (I'm not following a compiler book, and I'm lazy. That is why the code is shitty.)
 
+##Installation dependencies
+GCC (support for other C compilers coming soon)
+rustup
+
+##Installation
+Provided you have rustup installed:
+run "cargo install roblang" in your terminal.
+
 [Documentation](docs.md)
