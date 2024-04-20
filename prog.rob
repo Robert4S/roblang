@@ -2,4 +2,4 @@ let main: Function = () -> Number {
 	let fake: Number = 69;
 	inline "printf(\"fake is %d\n\", fake);";
 	return fake;
-};
+}

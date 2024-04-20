@@ -52,6 +52,7 @@ fn main() {
 
 fn build(file: &String, tokensshow: bool, nodes: bool) {
     let robstd = std::env::var("ROBSTD").unwrap_or_default();
+    let cvec = std::env::var("CVEC").unwrap_or_default();
     let tokens = tokenize::parse_start(&file).expect("a problem magically appeared");
     if tokensshow {
         for i in tokens.clone() {
@@ -89,8 +90,8 @@ fn build(file: &String, tokensshow: bool, nodes: bool) {
         .arg("-o")
         .arg(fstr)
         .arg(format!("-I{}", robstd))
-        .arg("-I/home/robert4/roblang/ctests/c-vector")
-        .arg("-L/home/robert4/roblang/ctests/c-vector")
+        .arg(format!("-I{}", cvec))
+        .arg(format!("-L{}", cvec))
         .arg("-lvec")
         .spawn()
         .expect("could not run");
