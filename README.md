@@ -7,12 +7,15 @@ The compiler is not currently functional, as I am still developing the parser fo
 
 (I'm not following a compiler book, and I'm lazy. That is why the code is shitty.)
 
-##Installation dependencies
+## Installation requirements
+Linux (maybe windows support sometime, probably not mac.)
 GCC (support for other C compilers coming soon)
 rustup
 
-##Installation
+## Installation
 Provided you have rustup installed:
 run "cargo install roblang" in your terminal.
+create an environment variable ROBSTD that links to the ctests directory of the repository.
+create and environment variable CVEC that links to the c-vector subdirectory of the repository.
 
 [Documentation](docs.md)
