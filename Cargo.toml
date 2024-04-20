@@ -4,7 +4,6 @@ version = "0.0.1"
 edition = "2021"
 description = "Compiler, grammar, and some files for the roblang programming language."
 readme = "README.md"
-documentation = "docs.md"
 repository = "https://github.com/Robert4S/roblang.git"
 exclude = ["target", ".git", "prog", "prog.rob", "out.c"]
 license = "MIT OR Apache-2.0"
