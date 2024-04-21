@@ -15,9 +15,12 @@ GCC (support for other C compilers coming soon)
 rustup
 
 ## Installation
-Provided you have rustup installed:
-run "cargo install roblang" in your terminal.
-create an environment variable ROBSTD that links to the ctests directory of the repository.
-create and environment variable CVEC that links to the c-vector subdirectory of the repository.
+1. Clone the repo
+2. run cargo build --release
+3. create the static library files for the libraries in ctests. vec.c must be libvec.a
+4. add the target/release directory to path
+5. link an environment variable ROBSTD to the ctests directory
+6. link an environment variable CVEC to the ctests/c-vector directory
+7. all good
 
 [Documentation](docs.md)
