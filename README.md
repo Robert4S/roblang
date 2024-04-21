@@ -12,7 +12,7 @@ All your RAM are belong to me (egregious use of .clone() because lifetimes scare
 ## Installation requirements
 Linux (maybe windows support sometime, probably not mac.)\
 GCC (support for other C compilers coming soon)\
-rustup\
+Cargo (rusts build system)
 
 ## Installation
 1. Clone the repo
