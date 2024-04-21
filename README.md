@@ -17,10 +17,13 @@ Cargo (rusts build system)
 ## Installation
 1. Clone the repo
 2. run cargo build --release
-3. create the static library files for the libraries in ctests. vec.c must be libvec.a
+3. create the static library files for the libraries in ctests. vec.c must be libvec.a (if you are using ubuntu, you do not have to do this.)
 4. add the roblang/target/release directory to path
 5. link an environment variable ROBSTD to the roblang/ctests directory
 6. link an environment variable CVEC to the roblang/ctests/c-vector directory
 7. all good
+
+## Examples
+I am not even really sure what it can or cant do, but the prog.rob file is a decent showcase of the current functionality.
 
 [Documentation](docs.md)
