@@ -10,7 +10,7 @@ All your RAM are belong to me.
 ## Installation requirements
 Linux (maybe windows support sometime, probably not mac.)\
 GCC (support for other C compilers coming soon)\
-Cargo (rusts build system)
+[Cargo](https://www.rust-lang.org/tools/install) (rusts build system)
 
 ## Installation
 1. Clone the repo
