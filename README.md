@@ -10,9 +10,9 @@ All your RAM are belong to me (egregious use of .clone() because lifetimes scare
 (I'm not following a compiler book, and I'm lazy. That is why the code is shitty.)
 
 ## Installation requirements
-Linux (maybe windows support sometime, probably not mac.)
-GCC (support for other C compilers coming soon)
-rustup
+Linux (maybe windows support sometime, probably not mac.)\
+GCC (support for other C compilers coming soon)\
+rustup\
 
 ## Installation
 1. Clone the repo
