@@ -9,7 +9,7 @@ let foo: Type = value;\
 \
 eg. let mynum: Number = 12;\
 \
-Functions are similarly defined, with their value looking like the following:\
+### Functions are similarly defined, with their value looking like the following:\
 \
 \
 (parameter: Type) -> Returntype {\
@@ -30,7 +30,7 @@ Variables are immutable. If you want to change a variable with control flow, mak
 
 ## Control flow
 
-Boolean expressions can be used directly in an if statement, but it can only compare identifiers.\
+### Boolean expressions can be used directly in an if statement, but it can only compare identifiers.\
 Else if does not exist. You must create an if statement inside of an else block.\
 \
 \
@@ -45,7 +45,7 @@ if foo == bar {\
 }
 
 ## Inline c
-You can add inline c with the inline keyword. Variables and functions defined in roblang will have the same names in C.\
+### You can add inline c with the inline keyword. Variables and functions defined in roblang will have the same names in C.\
 \
 \
 let x: Number = 10;\
