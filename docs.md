@@ -1,6 +1,6 @@
 # Documentation
 
-## Basic syntax
+## Variable and function assignment
 At the moment, declaration seperate from assignment is not supported.
 
 Variables (including functions) are assigned with the following syntax:
@@ -22,3 +22,26 @@ let adder: Function = (foo: Number, bar: Number) -> Number {\
     let added: Number = foo + bar;\
     return added;\
 }
+
+Functions can only return identifiers.
+
+Variables are immutable. If you want to change a variable with control flow, make aa function that does it.
+
+## Control flow
+
+Boolean expressions can be used directly in an if statement, but it can only compare identifiers.
+Else if does not exist. You must create an if statement inside of an else block.
+
+let foo: Number = 10;
+let bar: Number = 20;
+
+if foo == bar {
+    showme("10 is 20\n");
+} else {
+    showme("10 is not 20.\n");
+}
+
+## Inline c
+You can add inline c with the inline keyword. Variables and functions defined in roblang will have the same names in C.
+let x: Number = 10;
+inline "printf(\"Ten is %d\n \", x);";
