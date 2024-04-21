@@ -8,7 +8,6 @@ Variables (including functions) are assigned with the following syntax:\
 let foo: Type = value;\
 \
 eg. let mynum: Number = 12;\
-\
 ### Functions are similarly defined, with their value looking like the following:
 (parameter: Type) -> Returntype {\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;function body\
