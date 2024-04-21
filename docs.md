@@ -1,14 +1,14 @@
 # Documentation
 
 ## Variable and function assignment
-At the moment, declaration seperate from assignment is not supported.\\
-
-Variables (including functions) are assigned with the following syntax:\\
-
-let foo: Type = value;\\
-
+At the moment, declaration seperate from assignment is not supported.\
+\
+Variables (including functions) are assigned with the following syntax:\
+\
+let foo: Type = value;\
+\
 eg. let mynum: Number = 12;\
-
+\
 Functions are similarly defined, with their value looking like the following:\
 
 (parameter: Type) -> Returntype {\
@@ -23,8 +23,8 @@ let adder: Function = (foo: Number, bar: Number) -> Number {\
     &nbsp;&nbsp;&nbsp;&nbsp;return added;\
 }
 
-Functions can only return identifiers.\\
-
+Functions can only return identifiers.\
+\
 Variables are immutable. If you want to change a variable with control flow, make a function that does it.\
 
 ## Control flow
