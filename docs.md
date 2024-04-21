@@ -43,5 +43,6 @@ if foo == bar {\
 
 ## Inline c
 You can add inline c with the inline keyword. Variables and functions defined in roblang will have the same names in C.\
+\
 let x: Number = 10;\
 inline "printf(\"Ten is %d\n \", x);";
