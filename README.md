@@ -18,9 +18,9 @@ Cargo (rusts build system)
 1. Clone the repo
 2. run cargo build --release
 3. create the static library files for the libraries in ctests. vec.c must be libvec.a
-4. add the target/release directory to path
-5. link an environment variable ROBSTD to the ctests directory
-6. link an environment variable CVEC to the ctests/c-vector directory
+4. add the roblang/target/release directory to path
+5. link an environment variable ROBSTD to the roblang/ctests directory
+6. link an environment variable CVEC to the roblang/ctests/c-vector directory
 7. all good
 
 [Documentation](docs.md)
