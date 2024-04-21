@@ -280,6 +280,7 @@ pub struct CallNode {
 pub struct ConditionalNode {
     pub condition: Bool,
     pub body: BlockNode,
+    pub i_else: Option<BlockNode>,
 }
 
 #[derive(Debug, Clone)]

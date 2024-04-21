@@ -33,7 +33,7 @@ fn main() {
         tokens = true;
     }
     let buildfile = args.file;
-    build(&buildfile, tokens, nodes);
+    let _ = build(&buildfile, tokens, nodes);
     if run {
         let mut namechars = buildfile.chars().peekable();
         let mut newname = String::new();
@@ -50,10 +50,10 @@ fn main() {
     }
 }
 
-fn build(file: &String, tokensshow: bool, nodes: bool) {
+fn build(file: &String, tokensshow: bool, nodes: bool) -> Option<()> {
     let robstd = std::env::var("ROBSTD").unwrap_or_default();
     let cvec = std::env::var("CVEC").unwrap_or_default();
-    let tokens = tokenize::parse_start(&file).expect("a problem magically appeared");
+    let tokens = tokenize::parse_start(&file).expect("weird")?;
     if tokensshow {
         for i in tokens.clone() {
             println!("{:?}", i);
@@ -62,7 +62,7 @@ fn build(file: &String, tokensshow: bool, nodes: bool) {
     let mut parser = parsetree::ParseTree::new(&tokens);
     let mut root = parser.parse();
     if root.check_top().is_none() {
-        return;
+        return None;
     }
     let gen = generator::Generator::new(root.clone());
     let writeres = gen.write();
@@ -98,4 +98,5 @@ fn build(file: &String, tokensshow: bool, nodes: bool) {
     if nodes {
         nodes::print_program(&root.children, 0);
     }
+    Some(())
 }

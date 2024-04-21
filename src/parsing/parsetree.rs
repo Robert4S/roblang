@@ -48,6 +48,40 @@ impl<'a> ParseTree<'a> {
         };
         let mocktkn = Token::new(end_token.clone(), 0);
         let eof = end_token == TokenTypes::EOF;
+
+        // MANUALLY INSTERTING STD FUNCTIONS, WILL FIX LATER
+
+        if eof {
+            let showme = Function {
+                name: String::from("showme"),
+                body: BlockNode {
+                    children: Vec::new(),
+                },
+                ret: Types::Nothing,
+                params: Vec::new(),
+            };
+            let showmeident = IdentifierNode {
+                name: String::from("showme"),
+                i_type: Types::Function,
+                value: Some(Box::new(Value::Func(showme))),
+            };
+            basetbl.insert(String::from("showme"), showmeident);
+
+            let efailure = IdentifierNode {
+                name: String::from("EXIT_FAILURE"),
+                value: Some(Box::from(Value::Lit(Literal::Num(NumLiteral { val: -1 })))),
+                i_type: Types::Number,
+            };
+            basetbl.insert(String::from("EXIT_FAILURE"), efailure);
+
+            let esucc = IdentifierNode {
+                name: String::from("EXIT_SUCCESS"),
+                value: Some(Box::from(Value::Lit(Literal::Num(NumLiteral { val: -1 })))),
+                i_type: Types::Number,
+            };
+            basetbl.insert(String::from("EXIT_SUCCESS"), esucc);
+        }
+
         self.symbols.push(basetbl);
         'mainloop: while let Some(current) = self.iter.next() {
             if !eof && (current.variant_name() == mocktkn.variant_name()) {
@@ -96,7 +130,7 @@ impl<'a> ParseTree<'a> {
                     };
                     let stmt = StatementNode::Conditional(cond);
                     newblock.children.push(stmt);
-                },
+                }
                 TokenTypes::INLINE => {
                     let Some(inlinenode) = self.parse_inline() else {
                         eprintln!("Line {}: Failed to parse inline", current.line_num);
@@ -157,10 +191,10 @@ impl<'a> ParseTree<'a> {
         Some(newblock)
     }
 
-    fn parse_inline(&mut self) ->  Option<InlineC> {
+    fn parse_inline(&mut self) -> Option<InlineC> {
         let next = self.iter.next()?;
         match &next.variant {
-            TokenTypes::TEXT {text} => Some(InlineC(text.clone())),
+            TokenTypes::TEXT { text } => Some(InlineC(text.clone())),
             _ => None,
         }
     }
@@ -453,14 +487,18 @@ impl<'a> ParseTree<'a> {
                 } else if node.i_type == Types::Function {
                     let lbrac = self.iter.next()?;
                     if lbrac.variant != TokenTypes::LBRACKET {
-                        eprintln!("Line {}: Expected '(', found {} ", lbrac.line_num, lbrac.variant_name());
+                        eprintln!(
+                            "Line {}: Expected '(', found {} ",
+                            lbrac.line_num,
+                            lbrac.variant_name()
+                        );
                     }
                     match *node.value? {
                         Value::Func(func) => {
                             let callnode = self.parse_call(func)?;
                             Some(Bool::Call(callnode))
-                        },
-                        _ => panic!()
+                        }
+                        _ => panic!(),
                     }
                 } else {
                     Some(Bool::Expr(self.parse_bool_expression(node.clone())?))
@@ -677,16 +715,41 @@ impl<'a> ParseTree<'a> {
                 return None;
             };
             if lcurly.variant == TokenTypes::LCURLY {
-                let Some(body) = self.parse_until(TokenTypes::RCURLY, None, Some(functype)) else {
+                let Some(body) = self.parse_until(TokenTypes::RCURLY, None, Some(functype.clone()))
+                else {
                     eprintln!(
                         "Line {}: Could not parse conditional body.",
                         lcurly.line_num
                     );
                     return None;
                 };
+                let s_else = self.iter.peek()?;
+                if s_else.variant != TokenTypes::ELSE {
+                    let condnode = ConditionalNode {
+                        condition: thisbool,
+                        body,
+                        i_else: None,
+                    };
+                    return Some(condnode);
+                }
+                let s_else = self.iter.next()?;
+                let Some(lcurly) = self.iter.next() else {
+                    eprintln!("Line {}: Expected '{{'", s_else.line_num);
+                    return None;
+                };
+                if lcurly.variant != TokenTypes::LCURLY {
+                    eprintln!("Line {}: Expected '{{'", lcurly.line_num);
+                    return None;
+                }
+                let Some(elsebody) = self.parse_until(TokenTypes::RCURLY, None, Some(functype))
+                else {
+                    eprintln!("Line {}: Could not parse else body", lcurly.line_num);
+                    return None;
+                };
                 let condnode = ConditionalNode {
                     condition: thisbool,
                     body,
+                    i_else: Some(elsebody),
                 };
                 return Some(condnode);
             }
@@ -799,6 +862,27 @@ impl<'a> ParseTree<'a> {
                 break;
             }
         }
+
+        for val in &args {
+            match val {
+                Value::Nothing => panic!("not valid"),
+                _ => {}
+            }
+        }
+        // dbg!(args.clone());
+
+        if func.name == String::from("showme") {
+            let params_res: Option<Vec<IdentifierNode>> = args
+                .into_iter()
+                .map(|val| IdentifierNode::from(val.clone()))
+                .collect();
+            let params = params_res?;
+            return Some(CallNode {
+                func: func.clone(),
+                params,
+            });
+        }
+
         if args.len() != func.params.len() {
             eprintln!(
                 "Wrong number of arguments for call to function {}",

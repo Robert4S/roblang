@@ -1,6 +1,5 @@
 #[derive(PartialEq, Debug, Clone)]
 pub enum TokenTypes {
-    PRINT,
     EXIT,
     TEXT { text: String },
     NUMBER { val: i32 },
@@ -49,7 +48,6 @@ impl Token {
     pub fn variant_name(&self) -> &str {
         use TokenTypes;
         match self.variant {
-            TokenTypes::PRINT => "PRINT",
             TokenTypes::IF => "IF",
             TokenTypes::AND => "AND",
             TokenTypes::OR => "OR",
@@ -85,15 +83,17 @@ impl Token {
             TokenTypes::RETURN => "RETURN",
             TokenTypes::AMPER => "AMPER",
             TokenTypes::ELSE => "ELSE",
-            TokenTypes::INLINE => "INLINE"
+            TokenTypes::INLINE => "INLINE",
         }
     }
 }
 
-
 impl Token {
     pub fn new(tipe: TokenTypes, line: usize) -> Self {
-        Self { variant: tipe, line_num: line }
+        Self {
+            variant: tipe,
+            line_num: line,
+        }
     }
 }
 

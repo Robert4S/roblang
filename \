@@ -348,7 +348,7 @@ impl IdentifierNode {
     pub fn lit_c_out(&self) -> Option<String> {
         match *(self.value.clone()?) {
             Value::Lit(somelit) => match somelit {
-                Literal::Text(sometext) => Some(format!("\"{}\",", sometext.value.clone())),
+                Literal::Text(sometext) => Some(format!("{}", sometext.value.clone())),
                 _ => None,
             },
             Value::Ident(someident) => Some(someident.arg_c_out()?),
@@ -377,36 +377,17 @@ impl CallNode {
         if self.params.len() == 0 {
             return Some(String::from("printf();\n"));
         } else if self.params.len() == 1 {
-            eprintln!("...");
-            let mut temp = self.params[0].lit_c_out()?;
-            temp.remove(temp.len() - 1);
-            return Some(format!("printf({});\n", temp));
+            return Some(format!("printf({});\n", self.params[0].arg_c_out()?));
         }
 
         let mut argstr = String::new();
-        let mut i = 0;
         for arg in &self.params {
-            if i == 0 {
-                argstr.push_str(&self.params[0].lit_c_out()?);
-                i += 1;
-                continue;
-            }
-
-            match *(arg.clone().value?) {
-                Value::Ident(someident) => {
-                    let temp = format!("{},", someident.name.clone());
-                    argstr.push_str(temp.as_str());
-                }
-                _ => {
-                    eprintln!("Can only format identifiers of the same type.");
-                    return None;
-                }
-            }
+            argstr.push_str(&arg.arg_c_out()?);
         }
         let base = {
             match self.params[1].i_type {
-                Types::Number => format!("showme_int({} INT_MAX);\n", argstr),
-                Types::String => format!("showme_text({} NULL);\n", argstr),
+                Types::Number => format!("showme_int({}, INT_MAX);\n", argstr),
+                Types::String => format!("showme_text({}, NULL);\n", argstr),
                 _ => {
                     eprintln!("\n\n\nShowme is still experimental, and can only be used with Text or Number types. It is better to use an inlined printf() call.\n\n\n");
                     return None;

@@ -3,13 +3,13 @@ use std::io;
 
 use crate::data::*;
 
-pub fn parse_start(buildfile: &String) -> Result<Vec<Token>, io::Error> {
+pub fn parse_start(buildfile: &String) -> Result<Option<Vec<Token>>, io::Error> {
     let reader = fs::read_to_string(buildfile)?;
     let filereader = FileReader::new(&reader);
     Ok(parse_tokenize(filereader))
 }
 
-pub fn parse_tokenize(reader: FileReader) -> Vec<Token> {
+pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
     let mut tokens: Vec<Token> = Vec::new();
     let mut iter = reader.chars().peekable();
     let mut wordbuf = String::new();
@@ -26,6 +26,10 @@ pub fn parse_tokenize(reader: FileReader) -> Vec<Token> {
         }
         match current {
             ',' => {
+                if wordbuf.len() == 0 {
+                    tokens.push(Token::new(TokenTypes::COMMA, line_number));
+                    continue;
+                }
                 if let Some(keyword) = test_keyword(&wordbuf, line_number) {
                     tokens.push(keyword);
                 } else {
@@ -174,6 +178,10 @@ pub fn parse_tokenize(reader: FileReader) -> Vec<Token> {
                 }
             }
             ':' => {
+                if wordbuf.len() == 0 {
+                    tokens.push(Token::new(TokenTypes::COLON, line_number));
+                    continue;
+                }
                 if let Some(keyword) = test_keyword(&wordbuf, line_number) {
                     tokens.push(keyword);
                 } else {
@@ -230,15 +238,46 @@ pub fn parse_tokenize(reader: FileReader) -> Vec<Token> {
             }
         }
     }
-    tokens
+    let fixed_tokens: Vec<Token> = tokens
+        .clone()
+        .into_iter()
+        .map(|x| match x.variant {
+            TokenTypes::IDENT { name: inner } => Token::new(
+                TokenTypes::IDENT {
+                    name: String::from(inner.trim()),
+                },
+                x.line_num,
+            ),
+            _ => x,
+        })
+        .collect();
+    let mut tokensiter = fixed_tokens.iter().peekable();
+    let mut fixedtokens2 = Vec::new();
+    while let Some(next) = tokensiter.next() {
+        match next.variant {
+            TokenTypes::MINUS => match tokensiter.peek()?.variant {
+                TokenTypes::NUMBER { val: previous } => {
+                    tokensiter.next();
+                    fixedtokens2.push(Token::new(
+                        TokenTypes::NUMBER { val: previous * -1 },
+                        next.line_num,
+                    ));
+                    continue;
+                }
+                _ => {
+                    fixedtokens2.push(next.clone());
+                }
+            },
+            _ => {
+                fixedtokens2.push(next.clone());
+            }
+        }
+    }
+    Some(fixedtokens2)
 }
 
 pub fn test_keyword(word: &String, line: usize) -> Option<Token> {
     match word.as_str() {
-        "showme" => Some(Token {
-            variant: TokenTypes::PRINT,
-            line_num: line,
-        }),
         "exit" => Some(Token {
             variant: TokenTypes::EXIT,
             line_num: line,
@@ -276,6 +315,7 @@ pub fn test_keyword(word: &String, line: usize) -> Option<Token> {
             line_num: line,
         }),
         "if" => Some(Token::new(TokenTypes::IF, line)),
+        "else" => Some(Token::new(TokenTypes::ELSE, line)),
         "inline" => Some(Token::new(TokenTypes::INLINE, line)),
         _ => None,
     }

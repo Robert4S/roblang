@@ -22,5 +22,8 @@ int main() {
 	}
 	showme("My object again is {}\n", obj);
 
+	
+	showme_text("{}", mychar, NULL);
+
 	return 0;
 }
