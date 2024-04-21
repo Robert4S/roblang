@@ -1,4 +1,11 @@
 # Documentation
+## All currently implemented types:
+Text (maps to a stack allocated char[])\
+Number (maps to a stack allocated int)\
+Bool (maps to a bool)\
+Function (obvious)\
+\
+Dynamic strings, vectors, and arrays are coming soon.
 
 ## Variable and function assignment
 At the moment, declaration seperate from assignment is not supported.\
