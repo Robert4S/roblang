@@ -26,4 +26,4 @@ Cargo (rusts build system)
 ## Examples
 I am not even really sure what it can or cant do, but the prog.rob file is a decent showcase of the current functionality.
 
-[Documentation](docs.md)
+## [Documentation](docs.md)
