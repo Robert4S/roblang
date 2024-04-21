@@ -4,10 +4,8 @@ I am an IB computer sciences student, and this compiler is a pet project of mine
 
 Note:
 The language is very limited. Don't expect it to be able to do anything useful. Also, there are some horrifying snippets in the source code from when I got lazy and wanted to implement something quickly.
-
-All your RAM are belong to me (egregious use of .clone() because lifetimes scare me).
-
-(I'm not following a compiler book, and I'm lazy. That is why the code is shitty.)
+\
+All your RAM are belong to me.
 
 ## Installation requirements
 Linux (maybe windows support sometime, probably not mac.)\
