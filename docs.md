@@ -12,15 +12,15 @@ eg. let mynum: Number = 12;\
 Functions are similarly defined, with their value looking like the following:\
 
 (parameter: Type) -> Returntype {\
-    &nbsp;&nbsp;&nbsp;&nbsp;function body\
-    &nbsp;&nbsp;&nbsp;&nbsp;Return ReturnValue;\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;function body\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return ReturnValue;\
 }
 
 An example function would be:\
 
 let adder: Function = (foo: Number, bar: Number) -> Number {\
-    &nbsp;&nbsp;&nbsp;&nbsp;let added: Number = foo + bar;\
-    &nbsp;&nbsp;&nbsp;&nbsp;return added;\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;let added: Number = foo + bar;\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return added;\
 }
 
 Functions can only return identifiers.\
@@ -36,9 +36,9 @@ let foo: Number = 10;\
 let bar: Number = 20;\
 \
 if foo == bar {\
-    &nbsp;&nbsp;&nbsp;&nbsp;showme("10 is 20\n");\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;showme("10 is 20\n");\
 } else {\
-    &nbsp;&nbsp;&nbsp;&nbsp;showme("10 is not 20.\n");\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;showme("10 is not 20.\n");\
 }
 
 ## Inline c
