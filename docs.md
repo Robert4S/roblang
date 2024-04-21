@@ -25,7 +25,7 @@ let adder: Function = (foo: Number, bar: Number) -> Number {\
 
 Functions can only return identifiers.
 
-Variables are immutable. If you want to change a variable with control flow, make aa function that does it.
+Variables are immutable. If you want to change a variable with control flow, make a function that does it.
 
 ## Control flow
 
