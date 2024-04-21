@@ -3,7 +3,9 @@
 I am an IB computer sciences student, and this compiler is a pet project of mine. It is being developed as learning exercise, and not as a useful tool, as I do not have the time nor expertise to create a language or compiler that provides any genuine advantage over any already established languages. Feel free to raise any issues or suggestions if you do decide to try it out.
 
 Note:
-The compiler is not currently functional, as I am still developing the parser for it, but feel free to have a look at the current source code.
+The language is very limited. Don't expect it to be able to do anything useful. Also, there are some horrifying snippets in the source code from when I got lazy and wanted to implement something quickly.
+
+All your RAM are belong to me (egregious use of .clone() because lifetimes scare me).
 
 (I'm not following a compiler book, and I'm lazy. That is why the code is shitty.)
 
