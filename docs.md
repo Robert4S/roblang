@@ -35,10 +35,10 @@ Else if does not exist. You must create an if statement inside of an else block.
 let foo: Number = 10;
 let bar: Number = 20;
 
-if foo == bar {
-    &nbsp;&nbsp;&nbsp;&nbsp;showme("10 is 20\n");
-} else {
-    &nbsp;&nbsp;&nbsp;&nbsp;showme("10 is not 20.\n");
+if foo == bar {\
+    &nbsp;&nbsp;&nbsp;&nbsp;showme("10 is 20\n");\
+} else {\
+    &nbsp;&nbsp;&nbsp;&nbsp;showme("10 is not 20.\n");\
 }
 
 ## Inline c
