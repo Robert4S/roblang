@@ -9,8 +9,7 @@ let foo: Type = value;\
 \
 eg. let mynum: Number = 12;\
 \
-### Functions are similarly defined, with their value looking like the following:\
-\
+### Functions are similarly defined, with their value looking like the following:
 (parameter: Type) -> Returntype {\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;function body\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return ReturnValue;\
@@ -29,7 +28,7 @@ Variables are immutable. If you want to change a variable with control flow, mak
 
 ## Control flow
 
-### Boolean expressions can be used directly in an if statement, but it can only compare identifiers.\
+### Boolean expressions can be used directly in an if statement, but it can only compare identifiers.
 Else if does not exist. You must create an if statement inside of an else block.\
 \
 let foo: Number = 10;\
