@@ -120,7 +120,6 @@ pub enum Number {
     Lit(NumLiteral),
     Exp(Box<NumExpression>),
     Ident(IdentifierNode),
-    Call(CallNode)
 }
 
 #[derive(Debug, Clone)]

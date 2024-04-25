@@ -341,6 +341,21 @@ impl<'a> ParseTree<'a> {
                 table.insert(name, ident.clone());
             }
             return Some(DecAssignNode { ident, i_type });
+        } else if i_type == Types::Number {
+            let val = self.parse_number()?;
+            let value: Value = {
+                match val {
+                    Number::Lit(somelit) => Value::Lit(Literal::Num(somelit)),
+                    Number::Ident(someident) => Value::Ident(someident),
+                    Number::Exp(someexpr) => Value::Expr(Expression::Num(*someexpr)),
+                    Number::Call(somecall) => Value::Call(somecall),
+                }
+            };
+            let ident = IdentifierNode::new(&name, &i_type, value);
+            if let Some(table) = self.symbols.current_mut() {
+                table.insert(name, ident.clone());
+            }
+            return Some(DecAssignNode { ident, i_type });
         }
 
         if let Some(valtoken) = self.iter.next() {
@@ -456,6 +471,92 @@ impl<'a> ParseTree<'a> {
             eprintln!("Problem parsing delcaration");
             return None;
         }
+    }
+
+    fn parse_number(&mut self) -> Option<Number> {
+        let next = self.iter.next()?;
+        let left: Number = {
+            match &next.variant {
+                TokenTypes::NUMBER { val } => Number::Lit(NumLiteral { val: *val }),
+                TokenTypes::IDENT { name } => {
+                    let Some(numdent) = self.symbols.search_down(&name) else {
+                        eprintln!("Line {}: No identifier {} found", next.line_num, name);
+                        return None;
+                    };
+
+                    match numdent.i_type {
+                        Types::Number => Number::Ident(numdent),
+                        Types::Function => match *(numdent.value?) {
+                            Value::Func(somefunc) => {
+                                if somefunc.ret != Types::Number {
+                                    eprintln!("Mismatched types");
+                                    return None;
+                                }
+                                let callnode = self.parse_call(somefunc)?;
+                                Number::Call(callnode)
+                            }
+                            _ => {
+                                panic!();
+                            }
+                        },
+                        _ => {
+                            eprintln!("Mismatched types");
+                            return None;
+                        }
+                    }
+                }
+                _ => {
+                    return None;
+                }
+            }
+        };
+
+        let next = self.iter.next()?;
+        let op = {
+            match next.variant {
+                TokenTypes::SEMI => {
+                    return Some(left);
+                }
+                TokenTypes::PLUS => Operators::Plus,
+                TokenTypes::MINUS => Operators::Minus,
+                _ => {
+                    eprintln!("Line {}: Invalid operator.", next.line_num);
+                    return None;
+                }
+            }
+        };
+
+        let next = self.iter.next()?;
+        let right = {
+            match &next.variant {
+                TokenTypes::IDENT { name } => {
+                    let Some(numdent) = self.symbols.search_down(&name) else {
+                        eprintln!(
+                            "Line {}: No identifier {} found in current scope",
+                            next.line_num, name
+                        );
+                        return None;
+                    };
+                    match numdent.i_type {
+                        Types::Number => Number::Ident(numdent),
+                        _ => {
+                            eprintln!("Line {}: Mismatched types", next.line_num);
+                            return None;
+                        }
+                    }
+                }
+                TokenTypes::NUMBER { val } => Number::Lit(NumLiteral { val: *val }),
+                _ => {
+                    return None;
+                }
+            }
+        };
+        let num_expression = NumExpression {
+            left: Box::new(left),
+            operator: op,
+            right: Box::new(right),
+        };
+        Some(Number::Exp(Box::new(num_expression)))
     }
 
     fn parse_bool(&mut self) -> Option<Bool> {
@@ -852,7 +953,7 @@ impl<'a> ParseTree<'a> {
                     };
                     args.push(Value::Lit(Literal::Bool(inner)));
                 }
-                _ => todo!(),
+                _ => {}
             }
             let comma = self.iter.peek()?;
             if comma.variant == TokenTypes::COMMA {

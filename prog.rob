@@ -11,9 +11,12 @@ let istwo: Function = (test: Number) -> Bool {
 }
 
 let main: Function = () -> Number {
+
+	let three: Number = one + 2;
+
 	let x: Text = "robert";
 	showme("hello there {}\n", x);
-
+	
 	let ten: Bool = istwo(10);
 
 	if ten {

@@ -188,6 +188,17 @@ impl DecAssignNode {
                     let out = format!("{prefix} {}{suffix} = {callstr};\n", self.ident.name);
                     return Some(out);
                 }
+                Value::Expr(someexpr) => {
+                    let Some(exprstr) = someexpr.c_out() else {
+                        eprintln!("Could not generate code for expression");
+                        return None;
+                    };
+                    let prefix = match someexpr {
+                        Expression::Num(somenum) => "int",
+                        Expression::Bool(somebool) => "bool",
+                    };
+                    return Some(format!("{prefix} {} = {exprstr};\n", self.ident.name));
+                }
                 _ => {}
             }
         }
@@ -266,7 +277,32 @@ impl Value {
 
 impl Expression {
     pub fn c_out(&self) -> Option<String> {
-        todo!()
+        match self {
+            Expression::Bool(somebool) => Some(somebool.c_out()?),
+            Expression::Num(somenum) => Some(somenum.c_out()?),
+        }
+    }
+}
+
+impl NumExpression {
+    pub fn c_out(&self) -> Option<String> {
+        let left = match *(self.left.clone()) {
+            Number::Lit(somelit) => Literal::Num(somelit).c_out()?,
+            Number::Exp(somexpr) => somexpr.c_out()?,
+            Number::Call(somecall) => somecall.c_out()?,
+            Number::Ident(someident) => someident.c_out()?
+        };
+        let oper = match self.operator {
+            Operators::Plus => "+",
+            Operators::Minus => "-",
+        };
+        let right = match *(self.right.clone()) {
+            Number::Lit(somelit) => Literal::Num(somelit).c_out()?,
+            Number::Exp(somexpr) => somexpr.c_out()?,
+            Number::Call(somecall) => somecall.c_out()?,
+            Number::Ident(someident) => someident.c_out()?,
+        };
+        Some(format!("{left} {oper} {right}"))
     }
 }
 
@@ -354,6 +390,10 @@ impl IdentifierNode {
             Value::Ident(someident) => Some(someident.arg_c_out()?),
             _ => None,
         }
+    }
+
+    pub fn c_out(&self) -> Option<String> {
+        Some(format!("{}", self.name))
     }
 }
 
