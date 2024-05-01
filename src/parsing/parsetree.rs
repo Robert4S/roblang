@@ -69,14 +69,14 @@ impl<'a> ParseTree<'a> {
 
             let efailure = IdentifierNode {
                 name: String::from("EXIT_FAILURE"),
-                value: Some(Box::from(Value::Lit(Literal::Num(NumLiteral { val: -1 })))),
+                value: Some(Box::from(Value::Lit(Literal::Num(NumLiteral { val: 1 })))),
                 i_type: Types::Number,
             };
             basetbl.insert(String::from("EXIT_FAILURE"), efailure);
 
             let esucc = IdentifierNode {
                 name: String::from("EXIT_SUCCESS"),
-                value: Some(Box::from(Value::Lit(Literal::Num(NumLiteral { val: -1 })))),
+                value: Some(Box::from(Value::Lit(Literal::Num(NumLiteral { val: 0 })))),
                 i_type: Types::Number,
             };
             basetbl.insert(String::from("EXIT_SUCCESS"), esucc);
@@ -139,7 +139,11 @@ impl<'a> ParseTree<'a> {
                     let stmt = StatementNode::Inline(inlinenode);
                     newblock.children.push(stmt);
                 }
-                TokenTypes::IDENT { name } => {
+                TokenTypes::IDENT {
+                    name,
+                    isref: _,
+                    isptr: _,
+                } => {
                     let Some(lbrac) = self.iter.next() else {
                         eprintln!("Line {}: Expected '(' during call", current.line_num);
                         return None;
@@ -184,6 +188,10 @@ impl<'a> ParseTree<'a> {
                         None => panic!(),
                     }
                 }
+                TokenTypes::FOR => {
+                    let forstmt = self.parse_for(rettype.clone()?)?;
+                    newblock.children.push(StatementNode::ForLoop(forstmt));
+                }
                 _ => {}
             }
         }
@@ -202,7 +210,11 @@ impl<'a> ParseTree<'a> {
     fn parse_return(&mut self) -> Option<ReturnNode> {
         if let Some(ident) = self.iter.next() {
             match &ident.variant {
-                TokenTypes::IDENT { name } => {
+                TokenTypes::IDENT {
+                    name,
+                    isptr: _,
+                    isref: _,
+                } => {
                     if let Some(identnode) = self.symbols.search_down(name) {
                         let retnode = ReturnNode {
                             value: Value::Ident(identnode.clone()),
@@ -249,7 +261,11 @@ impl<'a> ParseTree<'a> {
         let mut i_type: Types;
         if let Some(next) = self.iter.next() {
             match &next.variant {
-                TokenTypes::IDENT { name: nombre } => {
+                TokenTypes::IDENT {
+                    name: nombre,
+                    isref: _,
+                    isptr: _,
+                } => {
                     name = nombre.clone();
                 }
                 _ => {
@@ -274,14 +290,32 @@ impl<'a> ParseTree<'a> {
 
         if let Some(typetkn) = self.iter.next() {
             match &typetkn.variant {
-                TokenTypes::NUMTYPE => {
-                    i_type = Types::Number;
+                TokenTypes::NUMTYPE(isptr) => {
+                    i_type = {
+                        if *isptr {
+                            Types::Pointer(Box::new(Types::Number))
+                        } else {
+                            Types::Number
+                        }
+                    };
                 }
-                TokenTypes::TEXTTYPE => {
-                    i_type = Types::String;
+                TokenTypes::TEXTTYPE(isptr) => {
+                    i_type = {
+                        if *isptr {
+                            Types::Pointer(Box::new(Types::String))
+                        } else {
+                            Types::String
+                        }
+                    };
                 }
-                TokenTypes::BOOLTYPE => {
-                    i_type = Types::Bool;
+                TokenTypes::BOOLTYPE(isptr) => {
+                    i_type = {
+                        if *isptr {
+                            Types::Pointer(Box::new(Types::Bool))
+                        } else {
+                            Types::Bool
+                        }
+                    };
                 }
                 TokenTypes::FUNCTYPE => {
                     i_type = Types::Function;
@@ -376,7 +410,7 @@ impl<'a> ParseTree<'a> {
                     let lit = Literal::Num(num);
                     value = Value::Lit(lit);
                 }
-                TokenTypes::IDENT { name } => {
+                TokenTypes::IDENT { name, isptr, isref } => {
                     if let Some(ident) = self.symbols.search_down(&name) {
                         if ident.i_type == Types::Function {
                             let Some(lbrac) = self.iter.next() else {
@@ -403,8 +437,28 @@ impl<'a> ParseTree<'a> {
                                 return None;
                             };
                             value = Value::Call(val.clone());
-                        } else if ident.i_type == i_type {
-                            value = Value::Ident(ident.clone());
+                        } else {
+                            if ident.i_type == i_type {
+                                value = Value::Ident(ident.clone());
+                            } else if *isptr {
+                                //TODO: it should be isderef, not isptr, as a * before a variable
+                                //name means you are extracting the value from the pointer, and
+                                //isref should be isptr, as putting a & in front turns it into a
+                                //pointer
+                                let Types::Pointer(ptrtype) = ident.i_type else {
+                                    return None;
+                                };
+                                if *ptrtype == i_type {
+                                    value = *(ident.value?).clone();
+                                }
+                            } else if *isref {
+                                let Types::Pointer(ref ptrtype) = i_type else {
+                                    return None;
+                                };
+                                if **ptrtype == ident.i_type {
+                                    value = Value::Pointer(ident.value?.clone())
+                                }
+                            }
                         }
                     } else {
                         eprintln!(
@@ -466,7 +520,10 @@ impl<'a> ParseTree<'a> {
             if let Some(table) = self.symbols.current_mut() {
                 table.insert(name, ident.clone());
             }
-            return Some(DecAssignNode { ident, i_type });
+            return Some(DecAssignNode {
+                ident,
+                i_type: i_type.clone(),
+            });
         } else {
             eprintln!("Problem parsing delcaration");
             return None;
@@ -478,7 +535,11 @@ impl<'a> ParseTree<'a> {
         let left: Number = {
             match &next.variant {
                 TokenTypes::NUMBER { val } => Number::Lit(NumLiteral { val: *val }),
-                TokenTypes::IDENT { name } => {
+                TokenTypes::IDENT {
+                    name,
+                    isptr: _,
+                    isref: _,
+                } => {
                     let Some(numdent) = self.symbols.search_down(&name) else {
                         eprintln!("Line {}: No identifier {} found", next.line_num, name);
                         return None;
@@ -511,25 +572,37 @@ impl<'a> ParseTree<'a> {
             }
         };
 
-        let next = self.iter.next()?;
+        let next = self.iter.peek()?;
         let op = {
             match next.variant {
                 TokenTypes::SEMI => {
                     return Some(left);
                 }
+                TokenTypes::DOT => {
+                    return Some(left);
+                }
+                TokenTypes::MOD => Operators::Mod,
                 TokenTypes::PLUS => Operators::Plus,
                 TokenTypes::MINUS => Operators::Minus,
+                TokenTypes::LCURLY => {
+                    return Some(left);
+                }
                 _ => {
                     eprintln!("Line {}: Invalid operator.", next.line_num);
                     return None;
                 }
             }
         };
+        self.iter.next();
 
         let next = self.iter.next()?;
         let right = {
             match &next.variant {
-                TokenTypes::IDENT { name } => {
+                TokenTypes::IDENT {
+                    name,
+                    isptr: _,
+                    isref: _,
+                } => {
                     let Some(numdent) = self.symbols.search_down(&name) else {
                         eprintln!(
                             "Line {}: No identifier {} found in current scope",
@@ -575,7 +648,11 @@ impl<'a> ParseTree<'a> {
                 };
                 Some(Bool::Lit(inner))
             }
-            TokenTypes::IDENT { name } => {
+            TokenTypes::IDENT {
+                name,
+                isptr: _,
+                isref: _,
+            } => {
                 let Some(node) = self.symbols.search_down(&name) else {
                     eprintln!(
                         "Line {}: No identifier {} found in current scope",
@@ -609,6 +686,58 @@ impl<'a> ParseTree<'a> {
         }
     }
 
+    fn parse_for(&mut self, functype: Types) -> Option<ForNode> {
+        let ident = self.iter.next()?;
+
+        let ident: IdentifierNode = match &ident.variant {
+            TokenTypes::IDENT {
+                name,
+                isptr: _,
+                isref: _,
+            } => IdentifierNode {
+                name: name.to_string(),
+                i_type: Types::Number,
+                value: None,
+            },
+            _ => {
+                return None;
+            }
+        };
+
+        let inkw = self.iter.next()?;
+        if inkw.variant != TokenTypes::IN {
+            return None;
+        }
+
+        let start = self.parse_number()?;
+
+        let (dot1, dot2) = (self.iter.next()?, self.iter.next()?);
+        if !(dot1.variant == dot2.variant && dot2.variant == TokenTypes::DOT) {
+            return None;
+        }
+
+        let end = self.parse_number()?;
+
+        let lcurly = self.iter.next()?;
+        if lcurly.variant != TokenTypes::LCURLY {
+            return None;
+        }
+
+        let body = self.parse_until(
+            TokenTypes::RCURLY,
+            Some(vec![ident.clone()]),
+            Some(functype),
+        )?;
+
+        let range = RangeNode { start, end };
+
+        Some(ForNode {
+            dec: ident,
+            range,
+            body,
+        })
+    }
+
     fn parse_function(&mut self, name: &String) -> Option<Function> {
         let mut fnparams: Option<Vec<IdentifierNode>> = None;
         let mut hierdiefunksie: Option<Function> = None;
@@ -639,14 +768,32 @@ impl<'a> ParseTree<'a> {
         if let Some(rettipe) = self.iter.next() {
             match rettipe.variant {
                 TokenTypes::NOTHINGTYPE => {}
-                TokenTypes::NUMTYPE => {
-                    rettype = Types::Number;
+                TokenTypes::NUMTYPE(isptr) => {
+                    rettype = {
+                        if isptr {
+                            Types::Pointer(Box::new(Types::Number))
+                        } else {
+                            Types::Number
+                        }
+                    }
                 }
-                TokenTypes::TEXTTYPE => {
-                    rettype = Types::String;
+                TokenTypes::TEXTTYPE(isptr) => {
+                    rettype = {
+                        if isptr {
+                            Types::Pointer(Box::new(Types::String))
+                        } else {
+                            Types::String
+                        }
+                    }
                 }
-                TokenTypes::BOOLTYPE => {
-                    rettype = Types::Bool;
+                TokenTypes::BOOLTYPE(isptr) => {
+                    rettype = {
+                        if isptr {
+                            Types::Pointer(Box::new(Types::Bool))
+                        } else {
+                            Types::Bool
+                        }
+                    }
                 }
                 _ => {
                     eprintln!("line {}: Expected RETURN TYPE of function. \nIf your function does not return, use 'Nothing'", rettipe.line_num);
@@ -699,7 +846,11 @@ impl<'a> ParseTree<'a> {
                 break 'mainloop;
             }
             match &param.variant {
-                TokenTypes::IDENT { name } => {
+                TokenTypes::IDENT {
+                    name,
+                    isptr: _,
+                    isref: _,
+                } => {
                     paramname = name.to_string();
                     if self.iter.peek().is_some() {
                         let colon = self.iter.next().unwrap();
@@ -751,9 +902,27 @@ impl<'a> ParseTree<'a> {
         if let Some(typeid) = self.iter.next() {
             match &typeid.variant {
                 TokenTypes::FUNCTYPE => Some(Types::Function),
-                TokenTypes::NUMTYPE => Some(Types::Number),
-                TokenTypes::TEXTTYPE => Some(Types::String),
-                TokenTypes::BOOLTYPE => Some(Types::Bool),
+                TokenTypes::NUMTYPE(isptr) => {
+                    if *isptr {
+                        Some(Types::Pointer(Box::new(Types::Number)))
+                    } else {
+                        Some(Types::Number)
+                    }
+                }
+                TokenTypes::TEXTTYPE(isptr) => {
+                    if *isptr {
+                        Some(Types::Pointer(Box::new(Types::String)))
+                    } else {
+                        Some(Types::String)
+                    }
+                }
+                TokenTypes::BOOLTYPE(isptr) => {
+                    if *isptr {
+                        Some(Types::Pointer(Box::new(Types::Bool)))
+                    } else {
+                        Some(Types::Bool)
+                    }
+                }
                 TokenTypes::NOTHINGTYPE => {
                     if allow_nothing {
                         Some(Types::Nothing)
@@ -773,7 +942,11 @@ impl<'a> ParseTree<'a> {
         let mut thisbool = Bool::Lit(BoolLiteral::False);
         if let Some(next) = self.iter.next() {
             match &next.variant {
-                TokenTypes::IDENT { name } => {
+                TokenTypes::IDENT {
+                    name,
+                    isptr: _,
+                    isref: _,
+                } => {
                     if let Some(boolident) = self.symbols.search_down(&name) {
                         if boolident.i_type == Types::Bool {
                             thisbool = Bool::Ident(boolident.clone());
@@ -892,7 +1065,11 @@ impl<'a> ParseTree<'a> {
         right = rightc.clone();
 
         match &right.variant {
-            TokenTypes::IDENT { name } => {
+            TokenTypes::IDENT {
+                name,
+                isptr: _,
+                isref: _,
+            } => {
                 let Some(rightnode) = self.symbols.search_down(&name) else {
                     eprintln!(
                         "Line {}: Could not find identifier {} in the current scope",
@@ -932,7 +1109,11 @@ impl<'a> ParseTree<'a> {
                 TokenTypes::RBRACKET => {
                     break;
                 }
-                TokenTypes::IDENT { name } => {
+                TokenTypes::IDENT {
+                    name,
+                    isptr: _,
+                    isref: _,
+                } => {
                     args.push(self.parse_arg_ident(name, param.line_num)?);
                 }
                 TokenTypes::NUMBER { val } => {

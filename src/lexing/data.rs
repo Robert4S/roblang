@@ -1,9 +1,19 @@
 #[derive(PartialEq, Debug, Clone)]
 pub enum TokenTypes {
     EXIT,
-    TEXT { text: String },
-    NUMBER { val: i32 },
-    IDENT { name: String },
+    TEXT {
+        text: String,
+    },
+    NUMBER {
+        val: i32,
+    },
+    IDENT {
+        name: String,
+        isptr: bool,
+        isref: bool,
+    },
+    STAR,
+    DOT,
     SEMI,
     LET,
     QUOTE,
@@ -25,17 +35,21 @@ pub enum TokenTypes {
     COLON,
     ARROW,
     NULL,
-    NUMTYPE,
-    BOOLTYPE,
-    TEXTTYPE,
+    NUMTYPE(bool),
+    BOOLTYPE(bool),
+    TEXTTYPE(bool),
     FUNCTYPE,
     NOTHINGTYPE,
-    BOOL { val: bool },
+    BOOL {
+        val: bool,
+    },
     EOF,
     COMMA,
     RETURN,
     AMPER,
     INLINE,
+    FOR,
+    IN,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -69,12 +83,16 @@ impl Token {
             TokenTypes::RCURLY => "RCURLY",
             TokenTypes::NULL => "NULL",
             TokenTypes::LET => "LET",
-            TokenTypes::IDENT { name: _ } => "IDENT",
+            TokenTypes::IDENT {
+                name: _,
+                isptr: _,
+                isref: _,
+            } => "IDENT",
             TokenTypes::COLON => "COLON",
             TokenTypes::ARROW => "ARROW",
-            TokenTypes::NUMTYPE => "TEXTTYPE",
-            TokenTypes::BOOLTYPE => "BOOLTYPE",
-            TokenTypes::TEXTTYPE => "TEXTTYPE",
+            TokenTypes::NUMTYPE(_) => "TEXTTYPE",
+            TokenTypes::BOOLTYPE(_) => "BOOLTYPE",
+            TokenTypes::TEXTTYPE(_) => "TEXTTYPE",
             TokenTypes::FUNCTYPE => "FUNCTYPE",
             TokenTypes::BOOL { val: _ } => "BOOL",
             TokenTypes::EOF => "EOF",
@@ -84,6 +102,10 @@ impl Token {
             TokenTypes::AMPER => "AMPER",
             TokenTypes::ELSE => "ELSE",
             TokenTypes::INLINE => "INLINE",
+            TokenTypes::FOR => "FOR",
+            TokenTypes::IN => "IN",
+            TokenTypes::DOT => "DOT",
+            TokenTypes::STAR => "STAR",
         }
     }
 }

@@ -111,7 +111,22 @@ pub enum StatementNode {
     Conditional(ConditionalNode),
     Return(ReturnNode),
     Inline(InlineC),
+    ForLoop(ForNode),
 }
+
+#[derive(Debug, Clone)]
+pub struct ForNode {
+    pub dec: IdentifierNode,
+    pub range: RangeNode,
+    pub body: BlockNode,
+}
+
+#[derive(Debug, Clone)]
+pub struct RangeNode {
+    pub start: Number,
+    pub end: Number,
+}
+
 #[derive(Debug, Clone)]
 pub struct InlineC(pub String);
 
@@ -120,7 +135,7 @@ pub enum Number {
     Lit(NumLiteral),
     Exp(Box<NumExpression>),
     Ident(IdentifierNode),
-    Call(CallNode)
+    Call(CallNode),
 }
 
 #[derive(Debug, Clone)]
@@ -146,6 +161,7 @@ impl NumExpression {
 pub enum Operators {
     Plus,
     Minus,
+    Mod,
 }
 
 #[derive(Debug, Clone)]
@@ -159,6 +175,7 @@ pub enum Types {
     String,
     Bool,
     Function,
+    Pointer(Box<Types>),
     Nothing,
 }
 
@@ -188,30 +205,35 @@ impl IdentifierNode {
     }
 
     pub fn from(val: Value) -> Option<Self> {
-        let i_type = {
-            match &val {
-                Value::Ident(node) => node.i_type.clone(),
-                Value::Lit(lit) => match lit {
-                    Literal::Num(_) => Types::Number,
-                    Literal::Bool(_) => Types::Bool,
-                    Literal::Text(_) => Types::String,
-                },
-                Value::Expr(expr) => match expr {
-                    Expression::Num(_) => Types::Number,
-                    Expression::Bool(_) => Types::Bool,
-                },
-                Value::Nothing => {
-                    return None;
-                }
-                Value::Func(_) => Types::Function,
-                Value::Call(node) => node.func.ret.clone(),
-            }
-        };
         Some(IdentifierNode {
-            i_type,
+            i_type: IdentifierNode::get_type_from(val.clone())?,
             value: Some(Box::new(val.clone())),
             name: String::from(""),
         })
+    }
+
+    fn get_type_from(val: Value) -> Option<Types> {
+        let f_type = match &val {
+            Value::Ident(node) => node.i_type.clone(),
+            Value::Lit(lit) => match lit {
+                Literal::Num(_) => Types::Number,
+                Literal::Bool(_) => Types::Bool,
+                Literal::Text(_) => Types::String,
+            },
+            Value::Expr(expr) => match expr {
+                Expression::Num(_) => Types::Number,
+                Expression::Bool(_) => Types::Bool,
+            },
+            Value::Nothing => {
+                return None;
+            }
+            Value::Func(_) => Types::Function,
+            Value::Call(node) => node.func.ret.clone(),
+            Value::Pointer(boxedval) => {
+                Types::Pointer(Box::new(IdentifierNode::get_type_from((**boxedval).clone())?))
+            }
+        };
+        Some(f_type)
     }
 }
 
@@ -222,6 +244,7 @@ pub enum Value {
     Ident(IdentifierNode),
     Func(Function),
     Call(CallNode),
+    Pointer(Box<Value>),
     Nothing,
 }
 
@@ -361,6 +384,10 @@ pub fn print_tree(node: &StatementNode, indent: usize) {
         }
         StatementNode::Return(node) => println!("{}Return: {:?}", indentation, node),
         StatementNode::Inline(inline) => println!("{}Inline: {:?}", indentation, inline),
+        StatementNode::ForLoop(node) => {
+            println!("{}For: {:?}", indentation, node);
+            print_program(&node.body.children, indent + 1)
+        }
     }
 }
 

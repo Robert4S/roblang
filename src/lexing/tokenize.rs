@@ -25,6 +25,42 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
             }
         }
         match current {
+            '*' => {
+                if wordbuf.len() != 0 {
+                    if let Some(keyword) = test_keyword(&wordbuf, line_number) {
+                        tokens.push(keyword);
+                    } else {
+                        tokens.push(Token::new(
+                            TokenTypes::TEXT {
+                                text: wordbuf.clone(),
+                            },
+                            line_number,
+                        ));
+                    }
+                }
+                wordbuf.clear();
+                tokens.push(Token::new(TokenTypes::STAR, line_number));
+            }
+            '.' => {
+                if wordbuf.len() == 0 {
+                    tokens.push(Token::new(TokenTypes::DOT, line_number));
+                    continue;
+                }
+                if let Some(num) = try_number(&wordbuf) {
+                    tokens.push(Token::new(TokenTypes::NUMBER { val: num }, line_number))
+                } else if let Some(kw) = test_keyword(&wordbuf, line_number) {
+                    tokens.push(kw);
+                } else {
+                    let ident = TokenTypes::IDENT {
+                        name: wordbuf.clone(),
+                        isptr: false,
+                        isref: false,
+                    };
+                    tokens.push(Token::new(ident, line_number));
+                }
+                wordbuf.clear();
+                tokens.push(Token::new(TokenTypes::DOT, line_number));
+            }
             ',' => {
                 if wordbuf.len() == 0 {
                     tokens.push(Token::new(TokenTypes::COMMA, line_number));
@@ -33,7 +69,11 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
                 if let Some(keyword) = test_keyword(&wordbuf, line_number) {
                     tokens.push(keyword);
                 } else {
-                    let ident = TokenTypes::IDENT { name: wordbuf };
+                    let ident = TokenTypes::IDENT {
+                        name: wordbuf,
+                        isptr: false,
+                        isref: false,
+                    };
                     tokens.push(Token::new(ident, line_number));
                 }
                 wordbuf = String::new();
@@ -80,6 +120,8 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
                         let ident = Token::new(
                             TokenTypes::IDENT {
                                 name: wordbuf.clone(),
+                                isptr: false,
+                                isref: false,
                             },
                             line_number,
                         );
@@ -98,6 +140,13 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
                     wordbuf = String::new();
                 }
                 tokens.push(Token::new(TokenTypes::PLUS, line_number));
+            }
+            '%' => {
+                if let Some(number) = try_number(&wordbuf) {
+                    tokens.push(Token::new(TokenTypes::NUMBER { val: number }, line_number));
+                    wordbuf = String::new();
+                }
+                tokens.push(Token::new(TokenTypes::MOD, line_number));
             }
             '-' => {
                 if let Some(next) = iter.peek() {
@@ -130,11 +179,23 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
                 tokens.push(Token::new(TokenTypes::EQ, line_number));
             }
             '(' => {
+                if let Some(num) = try_number(&wordbuf) {
+                    tokens.push(Token::new(TokenTypes::NUMBER { val: num }, line_number));
+                    tokens.push(Token::new(TokenTypes::LBRACKET, line_number));
+                    continue;
+                }
                 if let Some(keyword) = test_keyword(&wordbuf, line_number) {
                     tokens.push(keyword);
                     wordbuf = String::new();
                 } else if wordbuf.len() > 0 {
-                    let ident = Token::new(TokenTypes::IDENT { name: wordbuf }, line_number);
+                    let ident = Token::new(
+                        TokenTypes::IDENT {
+                            name: wordbuf,
+                            isptr: false,
+                            isref: false,
+                        },
+                        line_number,
+                    );
                     wordbuf = String::new();
                     tokens.push(ident);
                 }
@@ -149,6 +210,8 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
                 } else if wordbuf.len() >= 1 {
                     let ident = TokenTypes::IDENT {
                         name: wordbuf.clone(),
+                        isptr: false,
+                        isref: false,
                     };
                     wordbuf = String::new();
                     tokens.push(Token::new(ident, line_number));
@@ -160,6 +223,11 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
                 continue;
             }
             '{' => {
+                if let Some(num) = try_number(&wordbuf) {
+                    tokens.push(Token::new(TokenTypes::NUMBER { val: num }, line_number));
+                    tokens.push(Token::new(TokenTypes::LCURLY, line_number));
+                    continue;
+                }
                 tokens.push(Token::new(TokenTypes::LCURLY, line_number));
             }
             '}' => {
@@ -169,9 +237,23 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
                 tokens.push(Token::new(TokenTypes::OR, line_number));
             }
             '&' => {
-                if let Some(and) = iter.next() {
-                    if and == '&' {
+                if wordbuf.len() != 0 {
+                    if let Some(keyword) = test_keyword(&wordbuf, line_number) {
+                        tokens.push(keyword)
+                    } else {
+                        tokens.push(Token::new(
+                            TokenTypes::TEXT {
+                                text: wordbuf.clone(),
+                            },
+                            line_number,
+                        ));
+                    }
+                }
+                wordbuf.clear();
+                if let Some(and) = iter.peek() {
+                    if *and == '&' {
                         tokens.push(Token::new(TokenTypes::AND, line_number));
+                        iter.next();
                     } else {
                         tokens.push(Token::new(TokenTypes::AMPER, line_number));
                     }
@@ -187,6 +269,8 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
                 } else {
                     let ident = TokenTypes::IDENT {
                         name: wordbuf.clone(),
+                        isptr: false,
+                        isref: false,
                     };
                     wordbuf = String::new();
                     tokens.push(Token::new(ident, line_number));
@@ -216,10 +300,16 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
                         tokens.push(keyword);
                         wordbuf = String::new();
                         continue;
+                    } else if let Some(num) = try_number(&wordbuf) {
+                        tokens.push(Token::new(TokenTypes::NUMBER { val: num }, line_number));
+                        wordbuf.clear();
+                        continue;
                     } else if wordbuf.len() >= 1 {
                         let ident = Token::new(
                             TokenTypes::IDENT {
                                 name: wordbuf.clone(),
+                                isptr: false,
+                                isref: false,
                             },
                             line_number,
                         );
@@ -242,9 +332,15 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
         .clone()
         .into_iter()
         .map(|x| match x.variant {
-            TokenTypes::IDENT { name: inner } => Token::new(
+            TokenTypes::IDENT {
+                name: inner,
+                isptr: _,
+                isref: _,
+            } => Token::new(
                 TokenTypes::IDENT {
                     name: String::from(inner.trim()),
+                    isptr: false,
+                    isref: false,
                 },
                 x.line_num,
             ),
@@ -273,6 +369,48 @@ pub fn parse_tokenize(reader: FileReader) -> Option<Vec<Token>> {
             }
         }
     }
+
+    let mut i = 0;
+    while i < fixedtokens2.len() {
+        match fixedtokens2[i].variant {
+            TokenTypes::STAR => {
+                if i + 1 < fixedtokens2.len() {
+                    match fixedtokens2[i + 1].variant {
+                        TokenTypes::IDENT { name: _, isref: _, ref mut isptr } => {
+                            *isptr = true;
+                        }
+                        TokenTypes::TEXTTYPE(ref mut isptr) => {
+                            *isptr = true;
+                        }
+                        TokenTypes::BOOLTYPE(ref mut isptr) => {
+                            *isptr = true;
+                        }
+                        TokenTypes::NUMTYPE(ref mut isptr) => {
+                            *isptr = true;
+                        }
+                        _ => {continue;}
+                    }
+                    fixedtokens2.remove(i);
+                    continue;
+                }
+            }
+            TokenTypes::AMPER => {
+                if i + 1 < fixedtokens2.len() {
+                    match fixedtokens2[i + 1].variant {
+                        TokenTypes::IDENT { name: _, isptr: _, ref mut isref } => {
+                            *isref = true;
+                        }
+                        _ => {continue;}
+                    }
+                    fixedtokens2.remove(i);
+                    continue;
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+
     Some(fixedtokens2)
 }
 
@@ -286,19 +424,19 @@ pub fn test_keyword(word: &String, line: usize) -> Option<Token> {
             variant: TokenTypes::LET,
             line_num: line,
         }),
-        "Number" => Some(Token {
-            variant: TokenTypes::NUMTYPE,
+        "Num" => Some(Token {
+            variant: TokenTypes::NUMTYPE(false),
             line_num: line,
         }),
         "Text" => Some(Token {
-            variant: TokenTypes::TEXTTYPE,
+            variant: TokenTypes::TEXTTYPE(false),
             line_num: line,
         }),
         "Bool" => Some(Token {
-            variant: TokenTypes::BOOLTYPE,
+            variant: TokenTypes::BOOLTYPE(false),
             line_num: line,
         }),
-        "Function" => Some(Token {
+        "Func" => Some(Token {
             variant: TokenTypes::FUNCTYPE,
             line_num: line,
         }),
@@ -317,6 +455,8 @@ pub fn test_keyword(word: &String, line: usize) -> Option<Token> {
         "if" => Some(Token::new(TokenTypes::IF, line)),
         "else" => Some(Token::new(TokenTypes::ELSE, line)),
         "inline" => Some(Token::new(TokenTypes::INLINE, line)),
+        "for" => Some(Token::new(TokenTypes::FOR, line)),
+        "in" => Some(Token::new(TokenTypes::IN, line)),
         _ => None,
     }
 }

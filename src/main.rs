@@ -64,6 +64,9 @@ fn build(file: &String, tokensshow: bool, nodes: bool) -> Option<()> {
     if root.check_top().is_none() {
         return None;
     }
+    if nodes {
+        nodes::print_program(&root.children, 0);
+    }
     let gen = generator::Generator::new(root.clone());
     let writeres = gen.write();
     match writeres {
@@ -95,8 +98,6 @@ fn build(file: &String, tokensshow: bool, nodes: bool) -> Option<()> {
         .arg("-lvec")
         .spawn()
         .expect("could not run");
-    if nodes {
-        nodes::print_program(&root.children, 0);
-    }
+
     Some(())
 }

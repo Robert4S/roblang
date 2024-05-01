@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include "vec.h"
 
 
 
@@ -33,6 +32,9 @@ void showme_text(const char* format, ...);
 
 
 
+
+
+
 union Data {
     int i;
     char* c;
@@ -44,9 +46,13 @@ enum Type {
 };
 
 struct object {
-    union Data content;
+    union Data* content;
     enum Type type;
+    unsigned long refcount;
+    void (*destruct)(struct object*);
 };
+
+
 
 inline void showme_int(const char* format, ...) {
     va_list args;
@@ -84,13 +90,13 @@ inline void showme_text(const char* format, ...) {
 }
 
 
-void showme(const char* format, struct object myobj) {
-    switch (myobj.type) {
+inline void showme(const char* format, struct object* myobj) {
+    switch (myobj->type) {
 	case STRING:
-	    showme_text(format, myobj.content.c, NULL);
+	    showme_text(format, myobj->content->c, NULL);
 	break;
 	case INT:
-	    showme_int(format, myobj.content.i, INT_MAX);
+	    showme_int(format, myobj->content->i, INT_MAX);
 	break;
     }
 }

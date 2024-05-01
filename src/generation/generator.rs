@@ -1,8 +1,6 @@
 use crate::parsing::nodes::*;
-use std::collections::HashMap;
 use std::fs;
 use std::io::prelude::*;
-use std::io::Error;
 
 pub struct Generator {
     root: Program,
@@ -106,11 +104,43 @@ impl BlockNode {
                     let InlineC(inlc) = someinline;
                     res.push_str(inlc);
                 }
+                StatementNode::ForLoop(somefor) => {
+                    let Some(forstr) = somefor.c_out() else {
+                        eprintln!("Generation failed upon for loop c_out call");
+                        return None;
+                    };
+                    res.push_str(&forstr);
+                }
                 _ => {}
             }
         }
         res.push('\n');
         Some(res)
+    }
+}
+
+impl ForNode {
+    pub fn c_out(&self) -> Option<String> {
+        let bod = self.body.c_out()?;
+        let start = match &self.range.start {
+            Number::Lit(somelit) => format!("{}", somelit.val),
+            Number::Ident(someident) => someident.c_out()?,
+            Number::Exp(someexp) => (*someexp).c_out()?,
+            Number::Call(somecall) => somecall.c_out()?,
+        };
+
+        let end = match &self.range.end {
+            Number::Lit(somelit) => format!("{}", somelit.val),
+            Number::Ident(someident) => someident.c_out()?,
+            Number::Exp(someexp) => (*someexp).c_out()?,
+            Number::Call(somecall) => somecall.c_out()?,
+        };
+
+        let outstr = format!(
+            "for (int {} = {}; {} < {}; {}++) {{\n{}}}",
+            self.dec.name, start, self.dec.name, end, self.dec.name, bod
+        );
+        Some(outstr)
     }
 }
 
@@ -162,7 +192,8 @@ impl DecAssignNode {
                     Types::Nothing => {
                         eprintln!("Oops! A nothing type should not have made it this far. Please submit an issue on github.");
                         return None;
-                    }
+                    },
+                    Types::Pointer(_) => todo!()
                 },
                 Value::Func(somefunc) => {
                     let Some(funcstr) = somefunc.c_out() else {
@@ -183,6 +214,7 @@ impl DecAssignNode {
                             Types::Number => ("int", ""),
                             Types::Function => todo!(),
                             Types::Nothing => todo!(),
+                            Types::Pointer(_) => todo!(),
                         }
                     };
                     let out = format!("{prefix} {}{suffix} = {callstr};\n", self.ident.name);
@@ -194,11 +226,12 @@ impl DecAssignNode {
                         return None;
                     };
                     let prefix = match someexpr {
-                        Expression::Num(somenum) => "int",
-                        Expression::Bool(somebool) => "bool",
+                        Expression::Num(_) => "int",
+                        Expression::Bool(_) => "bool",
                     };
                     return Some(format!("{prefix} {} = {exprstr};\n", self.ident.name));
-                }
+                },
+                Value::Pointer(_) => { todo!(); }
                 _ => {}
             }
         }
@@ -290,11 +323,12 @@ impl NumExpression {
             Number::Lit(somelit) => Literal::Num(somelit).c_out()?,
             Number::Exp(somexpr) => somexpr.c_out()?,
             Number::Call(somecall) => somecall.c_out()?,
-            Number::Ident(someident) => someident.c_out()?
+            Number::Ident(someident) => someident.c_out()?,
         };
         let oper = match self.operator {
             Operators::Plus => "+",
             Operators::Minus => "-",
+            Operators::Mod => "%",
         };
         let right = match *(self.right.clone()) {
             Number::Lit(somelit) => Literal::Num(somelit).c_out()?,
@@ -392,6 +426,13 @@ impl IdentifierNode {
         }
     }
 
+    pub fn ptr_c_out(&self) -> Option<String> {
+        if self.i_type != Types::String {
+            return Some(format!("&({}),", self.name.clone()));
+        }
+        Some(format!("{},", self.name.clone()))
+    }
+
     pub fn c_out(&self) -> Option<String> {
         Some(format!("{}", self.name))
     }
@@ -434,7 +475,7 @@ impl CallNode {
 
             match *(arg.clone().value?) {
                 Value::Ident(someident) => {
-                    let temp = format!("{},", someident.name.clone());
+                    let temp = format!("{}", someident.ptr_c_out()?);
                     argstr.push_str(temp.as_str());
                 }
                 _ => {

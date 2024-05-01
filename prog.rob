@@ -1,29 +1,6 @@
-let istwo: Function = (test: Number) -> Bool {
-	let two: Number = 2;
-	let t: Bool = True;
-	let f: Bool = False;
-
-	if test == two {
-		return t;
-	} else {
-		return f;
-	}
+let main: Func = () -> Num {
+	let y: Text = "hello world";
+	let x: *Text = &y;
+	return EXIT_SUCCESS;
 }
 
-let main: Function = () -> Number {
-
-	let three: Number = one + 2;
-
-	let x: Text = "robert";
-	showme("hello there {}\n", x);
-	
-	let ten: Bool = istwo(10);
-
-	if ten {
-		showme("Ten is apparently two\n");
-		return EXIT_FAILURE;
-	} else {
-		showme("Ten is not two\n");
-		return EXIT_SUCCESS;
-	}
-}
