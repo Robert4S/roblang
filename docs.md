@@ -1,9 +1,10 @@
 # Documentation
 ## All currently implemented types:
 Text (maps to a stack allocated char[])\
-Number (maps to a stack allocated int)\
+Num (maps to a stack allocated int)\
 Bool (maps to a bool)\
-Function (obvious)\
+Func (obvious)\
+Pointer[Type] (written as *type)\
 \
 Dynamic strings, vectors, and arrays are coming soon.
 
@@ -30,7 +31,14 @@ let adder: Function = (foo: Number, bar: Number) -> Number {\
 
 Functions can only return identifiers.\
 \
-Variables are immutable. If you want to change a variable with control flow, make a function that does it.
+Variables are immutable. If you want to change a variable with control flow, make a function that does it.\
+Although variables are immutable, pointers and references still exist for redundency
+
+### Pointers and references
+A function can be passed pointers as parameters, and can return pointers.\
+A pointer type is prefixed with an asterisk, and a reference to create a pointer is prefixed with an ampersand:\
+let foo: Text = "Hello world";\
+let bar: *Text = &foo;
 
 ## Control flow
 

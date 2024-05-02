@@ -229,9 +229,9 @@ impl IdentifierNode {
             }
             Value::Func(_) => Types::Function,
             Value::Call(node) => node.func.ret.clone(),
-            Value::Pointer(boxedval) => {
-                Types::Pointer(Box::new(IdentifierNode::get_type_from((**boxedval).clone())?))
-            }
+            Value::Pointer(boxedval) => Types::Pointer(Box::new(IdentifierNode::get_type_from(
+                (**boxedval).clone(),
+            )?)),
         };
         Some(f_type)
     }
@@ -365,8 +365,8 @@ pub fn print_tree(node: &StatementNode, indent: usize) {
                     Value::Func(funcnode) => {
                         let children = &funcnode.body.children;
                         println!(
-                            "Declare function {} with params {:?}",
-                            node.ident.name, funcnode.params
+                            "Declare function {} with params {:?} returns {:?}",
+                            node.ident.name, funcnode.params, funcnode.ret
                         );
                         print_program(children, indent + 1);
                     }

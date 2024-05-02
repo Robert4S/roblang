@@ -456,7 +456,7 @@ impl<'a> ParseTree<'a> {
                                     return None;
                                 };
                                 if **ptrtype == ident.i_type {
-                                    value = Value::Pointer(ident.value?.clone())
+                                    value = Value::Pointer(Box::new(Value::Ident(ident)));
                                 }
                             }
                         }
