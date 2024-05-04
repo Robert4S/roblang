@@ -5,9 +5,6 @@
 #include <string.h>
 #include <stdarg.h>
 
-
-
-
 /**
  * @brief This function prints a formatted string with integer placeholders replaced by provided integers.
  *
@@ -30,15 +27,12 @@ void showme_int(const char* format, ...);
  */
 void showme_text(const char* format, ...);
 
+typedef struct object object;
 
-
-
-
-
-union Data {
-    int i;
-    char* c;
-};
+typedef union {
+    int i_num;
+    char* string;
+} Data;
 
 enum Type {
 	INT,
@@ -46,11 +40,14 @@ enum Type {
 };
 
 struct object {
-    union Data* content;
+    Data* content;
     enum Type type;
     unsigned long refcount;
-    void (*destruct)(struct object*);
+    void (*destruct)(object*);
 };
+
+typedef object* string;
+typedef object* num;
 
 
 
@@ -90,13 +87,13 @@ inline void showme_text(const char* format, ...) {
 }
 
 
-inline void showme(const char* format, struct object* myobj) {
+inline void showme(const char* format, object* myobj) {
     switch (myobj->type) {
 	case STRING:
-	    showme_text(format, myobj->content->c, NULL);
+	    showme_text(format, myobj->content->string, NULL);
 	break;
 	case INT:
-	    showme_int(format, myobj->content->i, INT_MAX);
+	    showme_int(format, myobj->content->i_num, INT_MAX);
 	break;
     }
 }

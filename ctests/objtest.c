@@ -1,7 +1,7 @@
 #include "./ioworking.h"
 
-void string_destruct(struct object* str) {
-   free(str->content->c);
+void string_destruct(object* str) {
+   free(str->content->string);
    free(str->content);
    free(str);
 }
@@ -13,14 +13,14 @@ void rc_decrement(struct object* rc) {
    }
 }
 
-void rc_increment(struct object* rc) {
+void rc_increment(object* rc) {
    rc->refcount++;
 }
 
-struct object* new_string() {
-   union Data* newstr = (union Data*) malloc(sizeof(union Data));
-   struct object* strobj = (struct object*) malloc(sizeof(struct object));
-   newstr->c = (char*) malloc(sizeof(char)*16);
+string new_string() {
+   Data* newstr = (Data*) malloc(sizeof(Data));
+   object* strobj = (object*) malloc(sizeof(object));
+   newstr->string = (char*) malloc(sizeof(char)*16);
    strobj->content = newstr;
    strobj->type = STRING;
    strobj->destruct = &string_destruct;
@@ -30,7 +30,7 @@ struct object* new_string() {
    return strobj;
 }
 
-void push_string(struct object* dest, char src[]) {
+void push_string(string dest, char src[]) {
    // Because the function returns the reference counted pointer,
    // it calls rc_increment just before returning it. This means
    // that you must not call rc_increment when receiving it.
@@ -51,17 +51,17 @@ void push_string(struct object* dest, char src[]) {
 
 char* input() {
    int ch;
-   struct object* string = new_string();
+   object* str = new_string();
    while ((ch = getchar()) != EOF && ch != '\n') {
       char* temparr = malloc(sizeof(char)*2);
       temparr[0] = ch;
       temparr[1] = '\0';
-      push_string(string, temparr);
+      push_string(str, temparr);
       free(temparr);
    }
-   rc_increment(string);
-   rc_decrement(string);
-   return string;
+   rc_increment(str);
+   rc_decrement(str);
+   return str->content->c;
 }
 
 int main() {
